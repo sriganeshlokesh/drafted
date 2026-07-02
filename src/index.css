@@ -1,0 +1,56 @@
+* { margin: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: #fff;
+  color: #2c2c34;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+#root { height: 100%; }
+
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb { background: #d3d1cb; border-radius: 7px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #b9b6ad; background-clip: content-box; }
+::placeholder { color: #a6a6ab; }
+
+textarea { resize: vertical; font-family: inherit; }
+input, textarea, button, select { font-family: inherit; }
+button:disabled { opacity: .35; cursor: default; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pop { 0% { opacity: 0; transform: translateY(10px) scale(.97); } 100% { opacity: 1; transform: none; } }
+
+/* Shared focus ring for every form control (the design's style-focus attribute). */
+.dc-input:focus {
+  border-color: var(--accent, #5b50e0);
+  box-shadow: 0 0 0 3px rgba(91, 80, 224, .15);
+}
+
+/* Resume preview experience bullets rendered HTML */
+.resume-bullets ul { margin: 2px 0 0; padding-left: 18px; }
+.resume-bullets li { margin: 0 0 2px; }
+.resume-bullets li:last-child { margin-bottom: 0; }
+.resume-bullets p { margin: 0; }
+
+/* Resume preview summary rendered HTML */
+.resume-summary p { margin: 0 0 3px; }
+.resume-summary p:last-child { margin-bottom: 0; }
+.resume-summary ul { margin: 0; padding-left: 18px; }
+.resume-summary li { margin: 0 0 2px; }
+.resume-summary li:last-child { margin-bottom: 0; }
+
+/* Tiptap rich-text editor content area */
+.rich-editor .tiptap {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #2c2c34;
+  padding: 11px 13px;
+  min-height: 100px;
+  outline: none;
+}
+.rich-editor .tiptap p { margin: 0 0 4px; }
+.rich-editor .tiptap p:last-child { margin-bottom: 0; }
+.rich-editor .tiptap ul { margin: 0; padding-left: 18px; }
+.rich-editor .tiptap li { margin: 0 0 2px; }
+.rich-editor .tiptap li:last-child { margin-bottom: 0; }

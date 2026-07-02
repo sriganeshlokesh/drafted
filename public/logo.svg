@@ -1,0 +1,12 @@
+<svg viewBox="25 25 150 150" width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <!-- dark navy box -->
+  <rect x="30" y="30" width="140" height="140" rx="22" fill="#26215C"/>
+  <!-- left curly brace -->
+  <path d="M68,52 Q54,52 54,66 L54,80 Q54,94 40,100 Q54,106 54,120 L54,134 Q54,148 68,148"
+        fill="none" stroke="#AFA9EC" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- right curly brace -->
+  <path d="M132,52 Q146,52 146,66 L146,80 Q146,94 160,100 Q146,106 146,120 L146,134 Q146,148 132,148"
+        fill="none" stroke="#AFA9EC" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- white d -->
+  <text x="100" y="122" font-size="66" font-weight="600" fill="white" text-anchor="middle" font-family="monospace">d</text>
+</svg>
