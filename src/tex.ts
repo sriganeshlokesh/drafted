@@ -1,4 +1,5 @@
 import type { PaperSize, ResumeData } from './types'
+import { clampFontScale } from './fontScale'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -48,7 +49,11 @@ export function genTex(s: ResumeData, paperSize: PaperSize): string {
   const e = esc
   const L: string[] = []
   const full = [s.firstName, s.lastName].filter(Boolean).join(' ')
-  L.push('\\documentclass[11pt,' + (paperSize === 'A4' ? 'a4paper' : 'letterpaper') + ']{article}')
+  // Scale the LaTeX base font size; scrextend recomputes \large/\LARGE (and list
+  // sizes) proportionally, so \section and the name track the A− / A+ setting.
+  const basePt = +(11 * clampFontScale(s.fontScale ?? 1)).toFixed(2)
+  L.push('\\documentclass[' + (paperSize === 'A4' ? 'a4paper' : 'letterpaper') + ']{article}')
+  L.push('\\usepackage[fontsize=' + basePt + 'pt]{scrextend}')
   L.push('\\usepackage[margin=1in]{geometry}')
   L.push('\\usepackage{enumitem,titlesec,hyperref}')
   L.push('\\titleformat{\\section}{\\large\\scshape\\bfseries}{}{0pt}{}[\\titlerule]')

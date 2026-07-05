@@ -1,4 +1,5 @@
 import type { ResumeData } from './types'
+import { clampFontScale } from './fontScale'
 
 /**
  * Normalizes a loosely-shaped résumé object into the exact `ResumeData` field
@@ -64,6 +65,8 @@ export function normalizeResumeData(input: Record<string, unknown>): Partial<Res
           : x.description || '',
     }))
   }
+
+  if (typeof d.fontScale === 'number') d.fontScale = clampFontScale(d.fontScale as number)
 
   return d as Partial<ResumeData>
 }

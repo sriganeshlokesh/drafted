@@ -8,6 +8,7 @@ import { normalizeResumeData } from './normalize'
 import { ImportModal, UploadIcon } from './ImportModal'
 import { importResume } from './resumeImport'
 import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
+import { FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, clampFontScale } from './fontScale'
 
 interface Props {
   accent?: string
@@ -36,7 +37,7 @@ const FORMATS: Record<Format, string> = { PDF: 'pdf', LaTeX: 'tex', Word: 'docx'
 const PERSIST_FIELDS: (keyof ResumeData)[] = [
   'firstName', 'lastName', 'email', 'linkedin', 'phone', 'location', 'targetCompany',
   'targetRole', 'docTitle', 'summary', 'experience', 'projects', 'education', 'skillGroups',
-  'step', 'view', 'format',
+  'step', 'view', 'format', 'fontScale',
 ]
 
 const initialState: State = {
@@ -45,6 +46,7 @@ const initialState: State = {
   compiling: false,
   toast: false,
   format: 'PDF',
+  fontScale: 1,
   menuOpen: false,
   resetDialogOpen: false,
   saveState: 'saved',
@@ -445,13 +447,19 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
   const focus = 'dc-input'
 
+  // Font-size (A− / A+) multiplier — scales every résumé text size below; the
+  // page auto-fit (s.scale) is separate. Repagination follows via measure().
+  const fz = clampFontScale(s.fontScale ?? 1)
+  const fs = (px: number) => `${+(px * fz).toFixed(2)}px`
+  const setFontScale = (next: number) => patch({ fontScale: clampFontScale(+next.toFixed(2)) })
+
   // Full résumé body — rendered inside every page sheet, offset per page.
   const resumeBody = (
     <>
       <div style={{ textAlign: 'center', margin: '0 0 3px' }}>
-        <span style={{ fontSize: '29px', fontWeight: 700, color: '#0d0d0d', letterSpacing: '.01em' }}>{fullName}</span>
+        <span style={{ fontSize: fs(29), fontWeight: 700, color: '#0d0d0d', letterSpacing: '.01em' }}>{fullName}</span>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'baseline', fontSize: '12.5px', color: '#222', margin: '0 0 2px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'baseline', fontSize: fs(12.5), color: '#222', margin: '0 0 2px' }}>
         {contactRaw.map((c, i) => (
           <span key={i} style={{ display: 'contents' }}>
             {i > 0 && <span style={{ color: '#555', margin: '0 7px' }}>|</span>}
@@ -462,24 +470,24 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
       {hasSummary && (
         <div>
-          <div style={sectionHeading}>Summary</div>
-          <div className="resume-summary" dangerouslySetInnerHTML={{ __html: s.summary }} style={{ fontSize: '13px', lineHeight: 1.48, color: '#161616', textAlign: 'justify' }} />
+          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Summary</div>
+          <div className="resume-summary" dangerouslySetInnerHTML={{ __html: s.summary }} style={{ fontSize: fs(13), lineHeight: 1.48, color: '#161616', textAlign: 'justify' }} />
         </div>
       )}
 
       {s.experience.length > 0 && (
         <div>
-          <div style={sectionHeading}>Experience</div>
+          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Experience</div>
           {s.experience.map((it, i) => (
             <div key={i} style={{ margin: '0 0 7px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontSize: '13.5px', color: '#111' }}>
+                <span style={{ fontSize: fs(13.5), color: '#111' }}>
                   <span style={{ fontWeight: 700 }}>{it.role}</span>
                   {`, ${it.company || ''}`}
                 </span>
-                <span style={{ fontStyle: 'italic', fontSize: '12.5px', color: '#222', whiteSpace: 'nowrap' }}>{expDates(it)}</span>
+                <span style={{ fontStyle: 'italic', fontSize: fs(12.5), color: '#222', whiteSpace: 'nowrap' }}>{expDates(it)}</span>
               </div>
-              <div className="resume-bullets" dangerouslySetInnerHTML={{ __html: it.bulletsText }} style={{ fontSize: '12.7px', lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify' }} />
+              <div className="resume-bullets" dangerouslySetInnerHTML={{ __html: it.bulletsText }} style={{ fontSize: fs(12.7), lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify' }} />
             </div>
           ))}
         </div>
@@ -487,14 +495,14 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
       {s.projects.length > 0 && (
         <div>
-          <div style={sectionHeading}>Projects</div>
+          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Projects</div>
           {s.projects.map((it, i) => (
             <div key={i} style={{ margin: '0 0 6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontWeight: 700, fontSize: '13.5px', color: '#111' }}>{it.name}</span>
-                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: '11px', color: '#2b5fb3' }}>{it.link}</span>
+                <span style={{ fontWeight: 700, fontSize: fs(13.5), color: '#111' }}>{it.name}</span>
+                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: fs(11), color: '#2b5fb3' }}>{it.link}</span>
               </div>
-              <div className="resume-summary" dangerouslySetInnerHTML={{ __html: it.description }} style={{ fontSize: '12.7px', lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify', margin: '2px 0 0' }} />
+              <div className="resume-summary" dangerouslySetInnerHTML={{ __html: it.description }} style={{ fontSize: fs(12.7), lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify', margin: '2px 0 0' }} />
             </div>
           ))}
         </div>
@@ -502,16 +510,16 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
       {s.education.length > 0 && (
         <div>
-          <div style={sectionHeading}>Education</div>
+          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Education</div>
           {s.education.map((it, i) => (
             <div key={i} style={{ margin: '0 0 5px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontWeight: 700, fontSize: '13.5px', color: '#111' }}>{it.degree}</span>
-                <span style={{ fontStyle: 'italic', fontSize: '12.5px', color: '#222', whiteSpace: 'nowrap' }}>{[fmtMonth(it.start), fmtMonth(it.end)].filter(Boolean).join(' – ')}</span>
+                <span style={{ fontWeight: 700, fontSize: fs(13.5), color: '#111' }}>{it.degree}</span>
+                <span style={{ fontStyle: 'italic', fontSize: fs(12.5), color: '#222', whiteSpace: 'nowrap' }}>{[fmtMonth(it.start), fmtMonth(it.end)].filter(Boolean).join(' – ')}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontSize: '13px', color: '#222' }}>{it.school}</span>
-                <span style={{ fontSize: '12.5px', color: '#333', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: fs(13), color: '#222' }}>{it.school}</span>
+                <span style={{ fontSize: fs(12.5), color: '#333', whiteSpace: 'nowrap' }}>
                   {it.extraDetails.filter(d => d.value).map(d => `${d.label}: ${d.value}`).join(' · ')}
                 </span>
               </div>
@@ -522,9 +530,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
       {skillLines.length > 0 && (
         <div>
-          <div style={sectionHeading}>Skills</div>
+          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Skills</div>
           {skillLines.map((g, i) => (
-            <p key={i} style={{ fontSize: '12.7px', lineHeight: 1.48, color: '#161616', margin: '0 0 1px' }}>
+            <p key={i} style={{ fontSize: fs(12.7), lineHeight: 1.48, color: '#161616', margin: '0 0 1px' }}>
               <span style={{ fontWeight: 700 }}>{g.label}</span>: {g.items}
             </p>
           ))}
@@ -771,9 +779,12 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
         <section style={{ flex: 1, display: isMobile && s.mobilePane === 'edit' ? 'none' : 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--c-bg-muted, #f0eff2)', position: 'relative' }}>
           <div style={{ flex: 'none', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid var(--c-border-subtle, #e2e1e4)', background: 'var(--c-preview-toolbar-bg, #faf9fb)' }}>
             <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-page-counter-bg, #e8e7ec)', borderRadius: '20px', padding: '3px 10px' }}>Page {s.currentPage} of {s.pages}</span>
-            <div style={{ display: 'flex', gap: '2px', background: 'var(--c-preview-tab-bg, #e4e3e8)', borderRadius: '7px', padding: '2px' }}>
-              <TabButton active={s.view === 'preview'} onClick={() => patch({ view: 'preview' })}>Typeset</TabButton>
-              <TabButton active={s.view === 'source'} onClick={() => patch({ view: 'source' })}>.tex</TabButton>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <FontSizeControl scale={fz} onChange={setFontScale} />
+              <div style={{ display: 'flex', gap: '2px', background: 'var(--c-preview-tab-bg, #e4e3e8)', borderRadius: '7px', padding: '2px' }}>
+                <TabButton active={s.view === 'preview'} onClick={() => patch({ view: 'preview' })}>Typeset</TabButton>
+                <TabButton active={s.view === 'source'} onClick={() => patch({ view: 'source' })}>.tex</TabButton>
+              </div>
             </div>
           </div>
 
@@ -889,6 +900,39 @@ function triggerDownload(blob: Blob, name: string) {
   a.download = name
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/** A− / A+ résumé font-size stepper for the preview toolbar. Disables at the clamp limits.
+ *  Mirrors the header Import button's indigo-on-tint styling (and its dark-mode tokens). */
+function FontSizeControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
+  const atMin = scale <= FONT_SCALE_MIN + 1e-6
+  const atMax = scale >= FONT_SCALE_MAX - 1e-6
+  const stepBtn = (label: string, disabled: boolean, onClick: () => void, aria: string) => (
+    <Hover
+      as="button"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={aria}
+      aria-label={aria}
+      style={{
+        minWidth: '40px', height: '30px', padding: '0 12px',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '14px', fontWeight: 700, lineHeight: 1, color: 'var(--accent,#5b50e0)',
+        background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)',
+        borderRadius: '8px', outline: 'none',
+        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1,
+      }}
+      hoverStyle={disabled ? {} : { background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}
+    >
+      {label}
+    </Hover>
+  )
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      {stepBtn('A−', atMin, () => onChange(scale - FONT_SCALE_STEP), 'Decrease font size')}
+      {stepBtn('A+', atMax, () => onChange(scale + FONT_SCALE_STEP), 'Increase font size')}
+    </div>
+  )
 }
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {

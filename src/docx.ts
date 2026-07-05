@@ -11,10 +11,14 @@ import {
 } from 'docx'
 import type { PaperSize, ResumeData } from './types'
 import { expDates, fmtMonth } from './tex'
+import { clampFontScale } from './fontScale'
 
 const FONT   = 'Georgia'   // matches PDF's serif (Computer Modern / Georgia)
-const SZ     = 20          // half-points = 10 pt body
-const SZ_SM  = 18          // 9 pt — contact line
+// Base half-point sizes (10 pt body / 9 pt contact / 26 pt name). Reassigned per
+// call from the résumé's fontScale so Word exports track the A− / A+ setting.
+let SZ       = 20          // half-points = 10 pt body
+let SZ_SM    = 18          // 9 pt — contact line
+let NAME_SZ  = 52          // 26 pt — name/header
 
 // ── Rich-text helpers ─────────────────────────────────────────────────────────
 
@@ -103,6 +107,14 @@ function subLine(text: string): Paragraph {
 // ── Main export ──────────────────────────────────────────────────────────────
 
 export async function genDocx(s: ResumeData, _paperSize: PaperSize): Promise<Blob> {
+  // Scale the shared half-point sizes for this export (Word requires integers).
+  // Read synchronously below before the single trailing await — same
+  // reset-at-entry pattern as keyCtr in resumePdf.tsx.
+  const scale = clampFontScale(s.fontScale ?? 1)
+  SZ = Math.round(20 * scale)
+  SZ_SM = Math.round(18 * scale)
+  NAME_SZ = Math.round(52 * scale)
+
   const children: Paragraph[] = []
 
   // ── Name ──────────────────────────────────────────────────────────────────
@@ -112,7 +124,7 @@ export async function genDocx(s: ResumeData, _paperSize: PaperSize): Promise<Blo
       // style carries centering into Pages; alignment is the Word fallback
       style: 'ResumeTitle',
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: fullName, bold: true, font: FONT, size: 52 })],
+      children: [new TextRun({ text: fullName, bold: true, font: FONT, size: NAME_SZ })],
     }))
   }
 
@@ -215,7 +227,7 @@ export async function genDocx(s: ResumeData, _paperSize: PaperSize): Promise<Blo
           run: {
             bold: true,
             font: FONT,
-            size: 52,
+            size: NAME_SZ,
           },
         },
         {

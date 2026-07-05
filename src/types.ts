@@ -57,6 +57,8 @@ export interface ResumeData {
   step: number
   view: View
   format: Format
+  /** Résumé text-size multiplier (A− / A+). 1 = default; clamped to [0.9, 1.1]. */
+  fontScale?: number
 }
 
 export type ListKey = 'experience' | 'projects' | 'education' | 'skillGroups'

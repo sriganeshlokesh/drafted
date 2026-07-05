@@ -2,6 +2,7 @@ import { Document, Page, View, Text, Link, Font, pdf } from '@react-pdf/renderer
 import type { ReactNode } from 'react'
 import type { Education, Experience, PaperSize, Project, ResumeData } from './types'
 import { expDates, fmtMonth } from './tex'
+import { clampFontScale } from './fontScale'
 
 /**
  * Vector-text PDF export via @react-pdf/renderer. Emits real, selectable text with
@@ -80,15 +81,15 @@ const stripProto = (s: string) => (s || '').replace(/^https?:\/\/(www\.)?/, '')
 
 // ── Building blocks ──────────────────────────────────────────────────────────
 
-function SectionHeading({ children }: { children: string }) {
+function SectionHeading({ children, fz }: { children: string; fz: number }) {
   return (
     <View style={{ borderBottomWidth: 1, borderBottomColor: '#000', marginTop: 11, marginBottom: 5, paddingBottom: 2 }} wrap={false}>
-      <Text style={{ fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.6 }}>{children}</Text>
+      <Text style={{ fontSize: 12 * fz, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.6 }}>{children}</Text>
     </View>
   )
 }
 
-function ContactLine({ data }: { data: ResumeData }) {
+function ContactLine({ data, fz }: { data: ResumeData; fz: number }) {
   const parts: ReactNode[] = []
   if (data.email) parts.push(<Link key="e" src={`mailto:${data.email}`} style={{ color: LINK, textDecoration: 'none' }}>{data.email}</Link>)
   if (data.location) parts.push(data.location)
@@ -104,14 +105,14 @@ function ContactLine({ data }: { data: ResumeData }) {
     woven.push(<Text key={`p${i}`}>{p}</Text>)
   })
   if (!woven.length) return null
-  return <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', marginTop: 4 }}>{woven}</Text>
+  return <Text style={{ textAlign: 'center', fontSize: 11 * fz, color: '#222', marginTop: 4 }}>{woven}</Text>
 }
 
-function DatedHeader({ left, right }: { left: ReactNode; right: string }) {
+function DatedHeader({ left, right, fz }: { left: ReactNode; right: string; fz: number }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1 }}>
-      <Text style={{ flex: 1, paddingRight: 8, fontSize: 12 }}>{left}</Text>
-      {right ? <Text style={{ fontStyle: 'italic', fontSize: 11, color: '#222' }}>{right}</Text> : null}
+      <Text style={{ flex: 1, paddingRight: 8, fontSize: 12 * fz }}>{left}</Text>
+      {right ? <Text style={{ fontStyle: 'italic', fontSize: 11 * fz, color: '#222' }}>{right}</Text> : null}
     </View>
   )
 }
@@ -119,6 +120,7 @@ function DatedHeader({ left, right }: { left: ReactNode; right: string }) {
 // ── Document ─────────────────────────────────────────────────────────────────
 
 function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: PaperSize }) {
+  const fz = clampFontScale(data.fontScale ?? 1)
   const full = [data.firstName, data.lastName].filter(Boolean).join(' ')
   const skillLines = data.skillGroups.filter((g) => (g.items || []).length)
 
@@ -126,17 +128,17 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
     <Document>
       <Page
         size={paperSize === 'A4' ? 'A4' : 'LETTER'}
-        style={{ paddingTop: 30, paddingBottom: 36, paddingHorizontal: 34, fontFamily: 'CMU Serif', fontSize: 11.5, color: '#161616', lineHeight: 1.25 }}
+        style={{ paddingTop: 30, paddingBottom: 36, paddingHorizontal: 34, fontFamily: 'CMU Serif', fontSize: 11.5 * fz, color: '#161616', lineHeight: 1.25 }}
         wrap
       >
         {/* Header */}
-        <Text style={{ textAlign: 'center', fontSize: 17.5, fontWeight: 'bold', color: '#0d0d0d', textTransform: 'uppercase', letterSpacing: 1 }}>{full}</Text>
-        <ContactLine data={data} />
+        <Text style={{ textAlign: 'center', fontSize: 17.5 * fz, fontWeight: 'bold', color: '#0d0d0d', textTransform: 'uppercase', letterSpacing: 1 }}>{full}</Text>
+        <ContactLine data={data} fz={fz} />
 
         {/* Summary */}
         {stripTags(data.summary) !== '' && (
           <View>
-            <SectionHeading>Summary</SectionHeading>
+            <SectionHeading fz={fz}>Summary</SectionHeading>
             {richBlocks(data.summary)}
           </View>
         )}
@@ -144,10 +146,10 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
         {/* Experience */}
         {data.experience.length > 0 && (
           <View>
-            <SectionHeading>Experience</SectionHeading>
+            <SectionHeading fz={fz}>Experience</SectionHeading>
             {data.experience.map((x: Experience, i) => (
               <View key={i} style={{ marginBottom: 6 }}>
-                <DatedHeader
+                <DatedHeader fz={fz}
                   left={<><Text style={{ fontWeight: 'bold' }}>{x.role}</Text>{x.company ? `, ${x.company}` : ''}</>}
                   right={expDates(x)}
                 />
@@ -160,12 +162,12 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
         {/* Projects */}
         {data.projects.length > 0 && (
           <View>
-            <SectionHeading>Projects</SectionHeading>
+            <SectionHeading fz={fz}>Projects</SectionHeading>
             {data.projects.map((x: Project, i) => (
               <View key={i} style={{ marginBottom: 5 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1 }}>
-                  <Text style={{ flex: 1, paddingRight: 8, fontSize: 12, fontWeight: 'bold' }}>{x.name}</Text>
-                  {x.link ? <Text style={{ fontFamily: 'CMU Typewriter', fontSize: 10.5, color: LINK }}>{x.link}</Text> : null}
+                  <Text style={{ flex: 1, paddingRight: 8, fontSize: 12 * fz, fontWeight: 'bold' }}>{x.name}</Text>
+                  {x.link ? <Text style={{ fontFamily: 'CMU Typewriter', fontSize: 10.5 * fz, color: LINK }}>{x.link}</Text> : null}
                 </View>
                 {richBlocks(x.description)}
               </View>
@@ -176,18 +178,18 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
         {/* Education */}
         {data.education.length > 0 && (
           <View>
-            <SectionHeading>Education</SectionHeading>
+            <SectionHeading fz={fz}>Education</SectionHeading>
             {data.education.map((x: Education, i) => {
               const detail = x.extraDetails.filter((d) => d.value).map((d) => `${d.label}: ${d.value}`).join(' · ')
               return (
                 <View key={i} style={{ marginBottom: 4 }}>
-                  <DatedHeader
+                  <DatedHeader fz={fz}
                     left={<Text style={{ fontWeight: 'bold' }}>{x.degree}</Text>}
                     right={[fmtMonth(x.start), fmtMonth(x.end)].filter(Boolean).join(' – ')}
                   />
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ flex: 1, paddingRight: 8, fontSize: 11.5, color: '#222' }}>{x.school}</Text>
-                    {detail ? <Text style={{ fontSize: 11, color: '#333' }}>{detail}</Text> : null}
+                    <Text style={{ flex: 1, paddingRight: 8, fontSize: 11.5 * fz, color: '#222' }}>{x.school}</Text>
+                    {detail ? <Text style={{ fontSize: 11 * fz, color: '#333' }}>{detail}</Text> : null}
                   </View>
                 </View>
               )
@@ -198,7 +200,7 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
         {/* Skills */}
         {skillLines.length > 0 && (
           <View>
-            <SectionHeading>Skills</SectionHeading>
+            <SectionHeading fz={fz}>Skills</SectionHeading>
             {skillLines.map((g, i) => (
               <Text key={i} style={{ marginBottom: 1 }}>
                 <Text style={{ fontWeight: 'bold' }}>{g.label}</Text>: {g.items.join(', ')}
