@@ -16,6 +16,7 @@ interface State extends ResumeData {
   compiling: boolean
   toast: boolean
   menuOpen: boolean
+  resetDialogOpen: boolean
   saveState: SaveState
   pages: number
   currentPage: number
@@ -39,58 +40,27 @@ const initialState: State = {
   toast: false,
   format: 'PDF',
   menuOpen: false,
+  resetDialogOpen: false,
   saveState: 'saved',
   pages: 1,
   currentPage: 1,
   scale: 1,
   paperH: 1056,
   mobilePane: 'edit',
-  firstName: 'Sriganesh',
-  lastName: 'Lokesh',
-  email: 'sriganeshlokesh@gmail.com',
-  linkedin: 'https://www.linkedin.com/in/sriganesh-lokesh',
+  firstName: '',
+  lastName: '',
+  email: '',
+  linkedin: '',
   phone: '',
-  location: 'Chicago, IL',
+  location: '',
   targetCompany: '',
   targetRole: '',
   docTitle: 'My résumé',
-  summary:
-    '<p>Backend engineer with 4+ years of experience building 0-to-1 products and operating large-scale distributed systems with high ownership and autonomy. Led a 7-engineer team at Fetch Rewards scaling a greenfield platform from $0 to $30M ARR, with deep expertise in Go, REST API design, Kafka-based event pipelines, PostgreSQL, and AWS. Comfortable navigating ambiguous technical challenges, decoupling monolithic systems, and driving technical standards in fast-moving environments.</p>',
-  experience: [
-    {
-      company: 'Fetch Rewards. Inc',
-      role: 'Sr. Software Engineer - I',
-      employment: 'Full-time',
-      start: '2023-04-10',
-      end: '',
-      present: true,
-      bulletsText:
-        '<ul><li>Architected and owned the end-to-end distributed ad platform from impression aggregation to delivery, processing 200M+ transactions daily at ~20K peak QPS across 13M+ MAUs.</li><li>Designed and built highly available, scalable REST and gRPC/Protobuf APIs in Go for internal and external use.</li><li>Built Kafka-based asynchronous streaming pipelines with exactly-once semantics for real-time event tracking, attribution, and billing correctness at scale.</li><li>Migrated a Redis-only budget pacing system to a PostgreSQL-backed persistent store on AWS Aurora, increasing stability and reliability.</li><li>Led a 7-engineer platform team, defining technical strategy that scaled a new business from $0 to $30M in recurring annual revenue within 2 years.</li><li>Mentored 3 engineers, leading design discussions and elevating the technical bar through platform design patterns.</li></ul>',
-    },
-    {
-      company: 'Fetch Rewards. Inc',
-      role: 'Software Engineer - II',
-      employment: 'Full-time',
-      start: '2021-07-01',
-      end: '2023-04-01',
-      present: false,
-      bulletsText:
-        '<ul><li>Led the ground-up redesign of a legacy backend service, decoupling a brittle monolith via placement-based sharding, an in-memory store, and Redis-based throttling into a horizontally scalable, low-latency system.</li><li>Designed and implemented RPS-based auto-scaling and proactive monitoring with alarm thresholds, significantly reducing production incidents.</li><li>Partnered with senior engineers and product leadership to define architecture decisions and influence technology choices.</li></ul>',
-    },
-  ],
-  projects: [
-    { name: 'Tectonic', link: 'github.com/slokesh/tectonic', description: '<p>Open-source LaTeX résumé compiler with a live web preview.</p>' },
-  ],
-  education: [
-    { school: 'University of North Carolina at Charlotte', degree: 'Master of Science, Computer Science', start: '2019-08-01', end: '2021-05-01', extraDetails: [] },
-    { school: 'SJB Institute of Technology', degree: 'Bachelor of Engineering, Information Science', start: '2015-08-01', end: '2019-07-01', extraDetails: [] },
-  ],
-  skillGroups: [
-    { label: 'Programming Languages', items: ['Go', 'Python'], draft: '' },
-    { label: 'Database', items: ['AWS DynamoDB', 'AWS DocumentDB', 'PostgreSQL', 'Elasticsearch', 'Redis'], draft: '' },
-    { label: 'Infrastructure', items: ['AWS', 'Kafka', 'Docker', 'Kubernetes', 'Terraform'], draft: '' },
-    { label: 'Practices', items: ['REST APIs', 'gRPC', 'Event-driven architecture', 'CI/CD'], draft: '' },
-  ],
+  summary: '',
+  experience: [],
+  projects: [],
+  education: [],
+  skillGroups: [],
 }
 
 const slug = (t: string) => (t || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -272,6 +242,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   // ── Persistence (auto-save) ────────────────────────────────────────────
   const lastSnap = useRef<string | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const stateRef = useRef(state)
+  stateRef.current = state
   const snapshot = (s: State) => {
     const d: Record<string, unknown> = {}
     PERSIST_FIELDS.forEach((f) => { d[f] = s[f] })
@@ -337,6 +309,15 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...PERSIST_FIELDS.map((f) => state[f])])
 
+  // Flush full state on page unload so step (and any debounced changes) survive a refresh.
+  useEffect(() => {
+    const flush = () => {
+      try { localStorage.setItem(SAVE_KEY, snapshot(stateRef.current)) } catch { /* ignore */ }
+    }
+    window.addEventListener('beforeunload', flush)
+    return () => window.removeEventListener('beforeunload', flush)
+  }, [])
+
   useEffect(() => () => {
     clearTimeout(t1.current)
     clearTimeout(t2.current)
@@ -395,6 +376,14 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     { label: 'Education', sub: `${s.education.length} school${s.education.length === 1 ? '' : 's'}`, title: 'Education', subtitle: 'Enter your education details' },
     { label: 'Skills', sub: `${s.skillGroups.length} categories`, title: 'Skills', subtitle: 'Group your skills by category' },
   ]
+  const sectionResets: Partial<State>[] = [
+    { firstName: '', lastName: '', email: '', linkedin: '', phone: '', location: '', targetCompany: '', targetRole: '', summary: '' },
+    { experience: [] },
+    { projects: [] },
+    { education: [] },
+    { skillGroups: [] },
+  ]
+
   const fullName = [s.firstName, s.lastName].filter(Boolean).join(' ')
   const user = slug(`${s.firstName} ${s.lastName}`) || 'resume'
   const fileName = [user, slug(s.targetCompany), slug(s.targetRole)].filter(Boolean).join('_')
@@ -408,6 +397,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     s.skillGroups.some((g) => g.items.length),
   ]
   const completePct = Math.round((checks.filter(Boolean).length / checks.length) * 100)
+  const isEmpty = completePct === 0
   const complete = completePct === 100
   const completeColor = complete ? accent2 : accent
   const completeBg = complete ? 'rgba(245,135,31,.12)' : '#efeefb'
@@ -551,6 +541,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
+          <Hover as="button" onClick={() => patch({ resetDialogOpen: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', fontSize: '13px', fontWeight: 500, color: '#6b6a72', background: '#f0eff2', border: '1px solid #d5d4d8', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: '#e5e4e8', borderColor: '#bbb' }}>
+            <span style={{ fontSize: '13px' }}>↺</span> Reset
+          </Hover>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#9b9a97' }}>
             {s.saveState === 'saving' ? (
               <>
@@ -600,7 +593,13 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       <nav style={{ flex: 'none', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0', borderBottom: '1px solid #ededec', background: '#fafaf9', overflowX: 'auto', scrollbarWidth: 'none', padding: '0 16px' } as CSSProperties}>
         {stepMeta.map((m, i) => {
           const activeStep = s.step === i
-          const done = s.step > i
+          const isPast = i < s.step
+          const sectionDone = checks[i]
+          const showAlert = isPast && !sectionDone
+          const badgeBg = activeStep ? accent : sectionDone ? 'rgba(245,135,31,.15)' : showAlert ? accent2 : '#fff'
+          const badgeColor = activeStep ? '#fff' : sectionDone ? accent2 : showAlert ? '#fff' : '#b3b1ab'
+          const badgeBorder = activeStep ? accent : sectionDone || showAlert ? accent2 : '#dcdbd6'
+          const badgeLabel = activeStep ? String(i + 1) : sectionDone ? '✓' : showAlert ? '!' : String(i + 1)
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
               {i > 0 && <div style={{ width: '36px', height: '1px', background: '#dcdbd6' }} />}
@@ -609,8 +608,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: activeStep ? '5px 12px 5px 5px' : '5px 8px 5px 5px', borderRadius: '20px', cursor: 'pointer', background: activeStep ? '#eeeeec' : 'transparent', border: 'none', transition: 'background .1s' }}
                 hoverStyle={{ background: '#eeeeec' }}
               >
-                <span style={{ flex: 'none', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, background: activeStep ? accent : done ? 'rgba(245,135,31,.16)' : '#fff', color: activeStep ? '#fff' : done ? accent2 : '#b3b1ab', border: `1.5px solid ${activeStep ? accent : done ? accent2 : '#dcdbd6'}` }}>
-                  {done ? '✓' : String(i + 1)}
+                <span style={{ flex: 'none', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, background: badgeBg, color: badgeColor, border: `1.5px solid ${badgeBorder}` }}>
+                  {badgeLabel}
                 </span>
                 <span style={{ fontSize: '13px', fontWeight: activeStep ? 600 : 400, color: activeStep ? '#37352f' : '#9b9a97', whiteSpace: 'nowrap' }}>{m.label}</span>
               </Hover>
@@ -662,8 +661,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 <PersonalField label="First Name" required check={!!s.firstName.trim()} input={<input className={focus} {...bind('firstName')} placeholder="First name" style={inputWithCheck} />} />
                 <PersonalField label="Last Name" required check={!!s.lastName.trim()} input={<input className={focus} {...bind('lastName')} placeholder="Last name" style={inputWithCheck} />} />
                 <PersonalField label="Email" required check={!!s.email.trim()} input={<input className={focus} {...bind('email')} placeholder="you@mail.com" style={inputWithCheck} />} />
-                <PersonalField label="LinkedIn" check input={<input className={focus} {...bind('linkedin')} placeholder="https://www.linkedin.com/in/you" style={inputWithCheck} />} />
-                <PersonalField label="Phone" check input={<input className={focus} {...bind('phone')} placeholder="Add your phone here" style={inputWithCheck} />} />
+                <PersonalField label="LinkedIn" check={!!s.linkedin.trim()} input={<input className={focus} {...bind('linkedin')} placeholder="https://www.linkedin.com/in/you" style={inputWithCheck} />} />
+                <PersonalField label="Phone" check={!!s.phone.trim()} input={<input className={focus} {...bind('phone')} placeholder="Add your phone here" style={inputWithCheck} />} />
                 <div style={{ margin: '0 0 14px' }}>
                   <label style={labelStyle}>Location</label>
                   <input className={focus} {...bind('location')} placeholder="City, State" style={inputStyle} />
@@ -701,7 +700,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 {s.education.map((it, i) => (
                   <EducationCard key={i} item={it} drag={makeDrag('education', i)} remove={() => removeItem('education', i)} update={(f, v) => setItemField('education', i, f as string, v)} />
                 ))}
-                <Hover as="button" onClick={() => addItem('education', { school: '', degree: '', start: '', end: '', detail: '' })} style={addBtn} hoverStyle={addBtnHover}>+ Add education</Hover>
+                <Hover as="button" onClick={() => addItem('education', { school: '', degree: '', start: '', end: '', extraDetails: [] })} style={addBtn} hoverStyle={addBtnHover}>+ Add education</Hover>
               </div>
             )}
 
@@ -736,8 +735,23 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
             </div>
           </div>
 
-          <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: 'auto', padding: '34px 30px 70px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
-            {s.view === 'preview' ? (
+          <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: 'auto', padding: '34px 30px 70px', display: 'flex', justifyContent: 'center', alignItems: s.view === 'preview' && isEmpty ? 'center' : 'flex-start' }}>
+            {s.view === 'preview' && isEmpty ? (
+              <div style={{ width: '100%', maxWidth: 560, padding: '80px 40px', background: '#fff', border: '2px dashed #d0cfe8', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+                <div style={{ position: 'relative', width: 90, height: 110 }}>
+                  <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
+                    <rect x="4" y="4" width="68" height="88" rx="8" fill="#eeedf5"/>
+                    <rect x="18" y="32" width="42" height="7" rx="3" fill="#c5c3d8"/>
+                    <rect x="18" y="48" width="30" height="7" rx="3" fill="#c5c3d8"/>
+                  </svg>
+                  <div style={{ position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 22, lineHeight: '1' }}>+</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 700, color: '#2a2a2a', fontFamily: 'ui-sans-serif,sans-serif' }}>Your résumé starts here</p>
+                  <p style={{ margin: 0, fontSize: 15, color: '#888', lineHeight: 1.6, maxWidth: 340, fontFamily: 'ui-sans-serif,sans-serif' }}>Fill in the form on the left and your typeset résumé will appear on this page as you go.</p>
+                </div>
+              </div>
+            ) : s.view === 'preview' ? (
               <div style={{ width: `${pageW * s.scale}px`, height: `${(s.pages * pageH + (s.pages - 1) * 22) * s.scale}px`, flex: 'none' }}>
                 <div style={{ transform: `scale(${s.scale})`, transformOrigin: 'top left', display: 'flex', flexDirection: 'column', gap: '22px' }}>
                   {Array.from({ length: s.pages }, (_, i) => (
@@ -784,6 +798,28 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
         <div style={{ position: 'fixed', bottom: '22px', left: '50%', transform: 'translateX(-50%)', background: '#2c2c34', color: '#fff', fontSize: '13.5px', fontWeight: 500, padding: '11px 18px', borderRadius: '9px', boxShadow: '0 8px 30px rgba(0,0,0,.25)', display: 'flex', alignItems: 'center', gap: '9px', animation: 'pop .2s ease', zIndex: 20 }}>
           <span style={{ color: 'var(--accent2,#f5871f)', fontSize: '15px' }}>✓</span> {fileName}.{ext} downloaded
         </div>
+      )}
+
+      {/* RESET CONFIRMATION DIALOG */}
+      {s.resetDialogOpen && (
+        <>
+          <div onClick={() => patch({ resetDialogOpen: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 40 }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'calc(100% - 32px)', maxWidth: 420, background: '#fff', borderRadius: '16px', padding: '28px 28px 22px', boxShadow: '0 20px 60px rgba(0,0,0,.22)', zIndex: 41 }}>
+            <p style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 700, color: '#1a1a1a' }}>Reset your résumé?</p>
+            <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#888', lineHeight: 1.6 }}>Choose what to clear — this can't be undone.</p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <Hover as="button" onClick={() => patch({ resetDialogOpen: false })} style={{ padding: '9px 16px', fontSize: '13px', fontWeight: 500, color: '#555', background: '#f0eff2', border: 'none', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: '#e5e4e8' }}>
+                Cancel
+              </Hover>
+              <Hover as="button" onClick={() => patch({ ...sectionResets[s.step], resetDialogOpen: false })} style={{ padding: '9px 16px', fontSize: '13px', fontWeight: 500, color: '#c0392b', background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.25)', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: 'rgba(192,57,43,.14)' }}>
+                Reset "{stepMeta[s.step].label}"
+              </Hover>
+              <Hover as="button" onClick={() => { localStorage.removeItem(SAVE_KEY); setState(initialState) }} style={{ padding: '9px 16px', fontSize: '13px', fontWeight: 600, color: '#fff', background: '#c0392b', border: 'none', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.1)' }}>
+                Reset all
+              </Hover>
+            </div>
+          </div>
+        </>
       )}
 
       {/* HIDDEN PDF RENDER TARGET — natural size, no CSS transform, used by html2canvas */}
