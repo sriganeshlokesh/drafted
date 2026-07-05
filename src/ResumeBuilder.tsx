@@ -541,18 +541,14 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
-          <Hover as="button" onClick={() => patch({ resetDialogOpen: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', fontSize: '13px', fontWeight: 500, color: '#6b6a72', background: '#f0eff2', border: '1px solid #d5d4d8', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: '#e5e4e8', borderColor: '#bbb' }}>
-            <span style={{ fontSize: '13px' }}>↺</span> Reset
+          <Hover as="button" onClick={() => patch({ resetDialogOpen: true })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: '#6b6a72', background: '#f0eff2', border: '1px solid #d5d4d8', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: '#e5e4e8', borderColor: '#bbb' }}>
+            <span>↺</span>{!isMobile && ' Reset'}
           </Hover>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#9b9a97' }}>
             {s.saveState === 'saving' ? (
-              <>
-                <span style={{ width: '11px', height: '11px', border: '2px solid #d8d6e8', borderTopColor: '#9b9a97', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} /> Saving…
-              </>
+              <span style={{ width: '11px', height: '11px', border: '2px solid #d8d6e8', borderTopColor: '#9b9a97', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
             ) : (
-              <>
-                <span style={{ color: accent2 }}>✓</span> Saved
-              </>
+              <><span style={{ color: accent2 }}>✓</span>{!isMobile && ' Saved'}</>
             )}
           </span>
           <div style={{ position: 'relative' }}>
@@ -561,7 +557,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 <span style={{ fontSize: '13px' }}>↓</span> Download
               </Hover>
               <Hover as="button" onClick={() => patch({ menuOpen: !s.menuOpen })} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 10px', background: 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,.22)', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.08)' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,.22)', borderRadius: '5px', padding: '2px 7px', letterSpacing: '.01em' }}>.{ext}</span>
+                {!isMobile && <span style={{ fontSize: '12px', fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,.22)', borderRadius: '5px', padding: '2px 7px', letterSpacing: '.01em' }}>.{ext}</span>}
                 <span style={{ fontSize: '9px', color: 'rgba(255,255,255,.8)' }}>▼</span>
               </Hover>
             </div>
