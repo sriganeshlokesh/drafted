@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { parseResumeText, parseDateRange, importResume } from './resumeImport'
+import { parseResumeText, parseResumeLines, parseDateRange, importResume } from './resumeImport'
 import { normalizeResumeData } from './normalize'
+import type { Line } from './pdfExtract'
+
+const L = (text: string, extra: Partial<Line> = {}): Line => ({
+  text,
+  x: 0,
+  y: 0,
+  fontSize: 0,
+  bold: false,
+  gapBefore: 1,
+  ...extra,
+})
 
 // A clean, single-column résumé — the shape the heuristics target.
 const SAMPLE = `Jane Doe
@@ -151,5 +162,51 @@ describe('importResume — guard', () => {
     const file = new File(['   \n  \n'], 'empty.txt', { type: 'text/plain' })
     const { ok } = await importResume(file)
     expect(ok).toBe(false)
+  })
+})
+
+describe('parseResumeLines — style signals (PDF)', () => {
+  it('feature-scoring prefers a bold line for the name', () => {
+    const data = parseResumeLines([
+      L('Software Engineer'), // letters-only: +3
+      L('Jane Doe', { bold: true }), // letters-only +3, bold +2 = 5 → wins
+      L('jane@example.com'),
+    ])
+    expect(data.firstName).toBe('Jane')
+    expect(data.lastName).toBe('Doe')
+  })
+
+  it('splits date-less experience entries on bold company titles', () => {
+    const data = parseResumeLines([
+      L('Experience'),
+      L('Acme Corporation', { bold: true, gapBefore: 2 }),
+      L('Software Engineer'),
+      L('Globex Inc', { bold: true, gapBefore: 2 }),
+      L('Staff Engineer'),
+    ])
+    expect(data.experience).toHaveLength(2)
+    expect(data.experience![0].company).toBe('Acme Corporation')
+    expect(data.experience![1].company).toBe('Globex Inc')
+  })
+
+  it('splits date-less experience entries on a large vertical gap', () => {
+    const data = parseResumeLines([
+      L('Experience'),
+      L('Engineer at Acme', { gapBefore: 1 }),
+      L('Shipped things', { gapBefore: 1 }),
+      L('Engineer at Globex', { gapBefore: 4 }), // big gap → new entry
+      L('Shipped more', { gapBefore: 1 }),
+    ])
+    expect(data.experience).toHaveLength(2)
+  })
+
+  it('treats an ALL-CAPS keyword line as a section header', () => {
+    const data = parseResumeLines([
+      L('Jane Doe'),
+      L('SKILLS'), // all-caps section header
+      L('Languages: TypeScript, Go'),
+    ])
+    expect(data.skillGroups).toHaveLength(1)
+    expect(data.skillGroups![0].label).toBe('Languages')
   })
 })

@@ -1,13 +1,14 @@
-import type { StructuredTextItem } from 'unpdf'
 import { normalizeResumeData } from './normalize'
+import { normalizeText, dehyphenate } from './textNormalize'
+import { extractPdfLines, type Line } from './pdfExtract'
 import type { Education, Experience, Project, ResumeData, SkillGroup } from './types'
 
 /**
- * Client-side, heuristic résumé importer. Extracts text from a file (unpdf for
- * PDFs; plain read for text formats) and maps it to `ResumeData` with regex /
- * keyword heuristics — no AI, no network. Best-effort by nature: varied and
- * multi-column layouts will miss or mis-assign fields, and scanned/image PDFs
- * yield little text (the caller guards against wiping the form on empty results).
+ * Client-side, heuristic résumé importer — no AI, no network. Extraction produces
+ * positioned `Line[]` (PDF via pdf.js with bold/font-size/column signals; text
+ * files synthesized with neutral signals), and `parseResumeLines` maps them to
+ * `ResumeData`. Best-effort by nature; the caller guards against wiping the form
+ * when little was extracted. Techniques adapted from OpenResume (open-source).
  */
 
 export interface ImportOutcome {
@@ -16,80 +17,28 @@ export interface ImportOutcome {
   ok: boolean
 }
 
-// ── File → raw text ────────────────────────────────────────────────────────
+// ── small helpers ────────────────────────────────────────────────────────────
 
-export async function extractText(file: File): Promise<string> {
-  const ext = (file.name.split('.').pop() || '').toLowerCase()
-  if (ext === 'pdf') return extractPdfText(file)
-  const raw = await file.text()
-  return ext === 'tex' ? deLatex(raw) : raw
+const median = (nums: number[]): number => {
+  if (!nums.length) return 0
+  const s = [...nums].sort((a, b) => a - b)
+  const m = s.length >> 1
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
 }
+const isAllCaps = (t: string) => /[A-Z]/.test(t) && t === t.toUpperCase()
 
-async function extractPdfText(file: File): Promise<string> {
-  // Lazy-loaded so unpdf (which bundles pdf.js) stays out of the main bundle and
-  // only downloads when a user actually imports a PDF. unpdf inlines its worker,
-  // so no Vite workerSrc setup is needed.
-  const { extractTextItems } = await import('unpdf')
-  const buf = new Uint8Array(await file.arrayBuffer())
-  const { items } = await extractTextItems(buf)
-  return itemsToText(items)
-}
-
-/**
- * Reconstruct reading-order lines from positioned PDF text items. Grouping items
- * by their y-coordinate (then sorting left-to-right by x) recovers line structure
- * that naive concatenation scrambles — the main mitigation for messy PDFs.
- * y-origin is bottom-left, so higher y = higher on the page.
- */
-function itemsToText(pages: StructuredTextItem[][]): string {
-  const out: string[] = []
-  for (const page of pages) {
-    const its = page.filter((i) => i.str && i.str.trim()).sort((a, b) => b.y - a.y || a.x - b.x)
-    let line: StructuredTextItem[] = []
-    let lineY: number | null = null
-    const flush = () => {
-      if (!line.length) return
-      const text = line
-        .sort((a, b) => a.x - b.x)
-        .map((i) => i.str)
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-      if (text) out.push(text)
-      line = []
-    }
-    for (const it of its) {
-      const tol = Math.max(2, (it.height || it.fontSize || 8) * 0.5)
-      if (lineY === null || Math.abs(it.y - lineY) <= tol) {
-        line.push(it)
-        if (lineY === null) lineY = it.y
-      } else {
-        flush()
-        line = [it]
-        lineY = it.y
-      }
-    }
-    flush()
-    out.push('') // blank line between pages
+/** Body font size = most common size (0.5 buckets, char-weighted). 0 for text files. */
+function bodyFontSize(lines: Line[]): number {
+  const counts = new Map<number, number>()
+  for (const l of lines) {
+    if (!l.fontSize) continue
+    const k = Math.round(l.fontSize * 2) / 2
+    counts.set(k, (counts.get(k) || 0) + Math.max(1, l.text.length))
   }
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
-}
-
-/** Best-effort de-macro of a LaTeX source into readable text. */
-function deLatex(tex: string): string {
-  return tex
-    .replace(/(^|[^\\])%.*$/gm, '$1') // strip comments (keep \%)
-    .replace(/\\(?:section|subsection|textbf|textit|emph|underline|textsc|href)\*?\s*\{[^{}]*\}\s*\{([^{}]*)\}/g, '$1')
-    .replace(/\\(?:section|subsection|textbf|textit|emph|underline|textsc)\*?\s*\{([^{}]*)\}/g, '$1')
-    .replace(/\\item\s*/g, '\n• ')
-    .replace(/\\\\/g, '\n')
-    .replace(/\\(?:begin|end)\s*\{[^}]*\}/g, '')
-    .replace(/\\([&%_#$])/g, '$1') // unescape
-    .replace(/\\[a-zA-Z]+\*?/g, ' ') // drop remaining commands
-    .replace(/[{}]/g, '')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  let best = 0
+  let bestN = -1
+  for (const [k, n] of counts) if (n > bestN) ((bestN = n), (best = k))
+  return best
 }
 
 // ── Dates ──────────────────────────────────────────────────────────────────
@@ -101,8 +50,7 @@ const MONTHS: Record<string, string> = {
   october: '10', nov: '11', november: '11', dec: '12', december: '12',
 }
 
-// Month name + year (real months only — a broad `[A-Za-z]{3,9}` would swallow any
-// word before a year, e.g. "Technolog(y) 2014"), or MM/YYYY, or YYYY-MM, or a bare year.
+// Month name + year (real months only), or MM/YYYY, or YYYY-MM, or a bare year.
 const DATE_TOKEN =
   /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{4}|\d{1,2}\/\d{4}|\d{4}-\d{1,2}|\b\d{4}\b/gi
 const PRESENT = /\b(present|current|now|ongoing|till\s*date|to\s*date)\b/i
@@ -135,8 +83,6 @@ export function parseDateRange(line: string): DateRange | null {
 }
 
 function stripDatePortion(line: string): string {
-  // Note: don't strip –/—/| here — those separate role from company; only the
-  // leading/trailing cleanup below removes any left orphaned by the removed dates.
   return line
     .replace(DATE_TOKEN, ' ')
     .replace(PRESENT, ' ')
@@ -157,13 +103,22 @@ const SECTION_PATTERNS: { key: SectionKey; re: RegExp }[] = [
   { key: 'skills', re: /^(skills|technical\s+skills|technologies|core\s+competencies|skills\s*(&|and)\s*interests)\b/i },
 ]
 
-function splitSections(text: string): Record<SectionKey, string[]> {
-  const sections = { _header: [], summary: [], experience: [], projects: [], education: [], skills: [] } as Record<SectionKey, string[]>
+/**
+ * Split lines into sections. A line is a header when it matches a section keyword
+ * AND is header-shaped — short, or (style-aware) bold / ALL-CAPS / larger than
+ * body. Style relaxes the length gate so styled keyword headers aren't missed.
+ */
+function splitSections(lines: Line[]): Record<SectionKey, Line[]> {
+  const sections = { _header: [], summary: [], experience: [], projects: [], education: [], skills: [] } as Record<SectionKey, Line[]>
+  const body = bodyFontSize(lines)
   let current: SectionKey = '_header'
-  for (const line of text.split('\n')) {
-    const t = line.trim()
-    const isHeaderCandidate = t.length > 0 && t.length <= 34 && t.split(/\s+/).length <= 4
-    const hdr = isHeaderCandidate ? SECTION_PATTERNS.find((p) => p.re.test(t)) : undefined
+  for (const line of lines) {
+    const t = line.text.trim()
+    if (!t) continue
+    const words = t.split(/\s+/).length
+    const styled = line.bold || isAllCaps(t) || (body > 0 && line.fontSize >= body * 1.12)
+    const headerish = (t.length <= 34 && words <= 4) || (styled && words <= 6)
+    const hdr = headerish ? SECTION_PATTERNS.find((p) => p.re.test(t)) : undefined
     if (hdr) {
       current = hdr.key
       continue
@@ -179,28 +134,42 @@ const BULLET = /^\s*(?:[•▪◦·‣]\s*|[-*]\s+)/
 const URL = /(?:https?:\/\/)?(?:www\.)?(?:github\.com|gitlab\.com|[\w-]+\.[a-z]{2,})(?:\/[^\s|,)]*)?/i
 const dedupe = (a: string[]) => [...new Set(a.map((s) => s.trim()).filter(Boolean))]
 
-function parseContact(lines: string[]): Partial<ResumeData> {
+/** Feature-scored contact fields (OpenResume-style weights for the name). */
+function parseContact(lines: Line[]): Partial<ResumeData> {
   const out: Partial<ResumeData> = {}
-  const text = lines.join('\n')
-  const segs = lines.flatMap((l) => l.split(/[|•·]/)).map((s) => s.trim()).filter(Boolean)
+  const joined = lines.map((l) => l.text).join('\n')
+  const segs = lines.flatMap((l) => l.text.split(/[|•·]/)).map((s) => s.trim()).filter(Boolean)
 
-  const email = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)
+  const email = joined.match(/[\w.+-]+@[\w-]+\.[\w.-]+/) // first email = the applicant's
   if (email) out.email = email[0]
 
-  const linkedin = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,]+/i)
+  const linkedin = joined.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,]+/i)
   if (linkedin) out.linkedin = linkedin[0].replace(/^https?:\/\//, '').replace(/^www\./, '')
 
-  const phone = text.match(/\+?\(?\d[\d\s().-]{7,}\d/)
+  const phone = joined.match(/\+?\(?\d[\d\s().-]{7,}\d/)
   if (phone) {
     const digits = phone[0].replace(/\D/g, '')
     if (digits.length >= 7 && digits.length <= 15) out.phone = phone[0].trim()
   }
 
-  const name = lines
-    .map((l) => l.trim())
-    .find((l) => l && !/@|\d|linkedin|http|\bresume\b|curriculum|\bcv\b/i.test(l) && l.split(/\s+/).length <= 5)
-  if (name) {
-    const parts = name.split(/\s+/)
+  // Name: score each short header line; highest wins (must clear a floor so junk loses).
+  let bestName = ''
+  let bestScore = 2
+  for (const l of lines) {
+    const t = l.text.trim()
+    if (!t || t.split(/\s+/).length > 6) continue
+    let sc = 0
+    if (/^[A-Za-z][A-Za-z\s.]*$/.test(t)) sc += 3
+    if (isAllCaps(t)) sc += 2
+    if (l.bold) sc += 2
+    if (/@/.test(t)) sc -= 4
+    if (/\d/.test(t)) sc -= 4
+    if (/,/.test(t)) sc -= 4
+    if (/\//.test(t)) sc -= 4
+    if (sc > bestScore) ((bestScore = sc), (bestName = t))
+  }
+  if (bestName) {
+    const parts = bestName.split(/\s+/)
     out.firstName = parts[0]
     out.lastName = parts.slice(1).join(' ')
   }
@@ -240,7 +209,13 @@ function assignRoleCompany(e: Experience, text: string): void {
   else if (!e.company) e.company = t
 }
 
-function parseExperience(lines: string[]): Experience[] {
+/** Entries anchored on date-range lines; when a section has no dates, on big vertical gaps or bold titles. */
+function parseExperience(lines: Line[]): Experience[] {
+  const typicalGap = median(lines.map((l) => l.gapBefore).filter((g) => g > 0 && g < 900)) || 1
+  const hasDates = lines.some((l) => {
+    const d = parseDateRange(l.text.trim())
+    return !!(d && d.start)
+  })
   const entries: Experience[] = []
   let cur: Experience | null = null
   let bullets: string[] = []
@@ -249,36 +224,56 @@ function parseExperience(lines: string[]): Experience[] {
     if (cur) cur.bulletsText = bullets.join('\n')
     bullets = []
   }
-  for (const raw of lines) {
-    const line = raw.trim()
-    if (!line) continue
-    const isBullet = BULLET.test(raw)
-    const dr = !isBullet ? parseDateRange(line) : null
+  const startEntry = (headerText: string, dr: DateRange | null, boldTitle = false): Experience => {
+    flushBullets()
+    const e: Experience = {
+      company: '', role: '', employment: detectEmployment(headerText),
+      start: dr?.start ?? '', end: dr?.end ?? '', present: dr?.present ?? false, bulletsText: '',
+    }
+    entries.push(e)
+    const rest = stripDatePortion(headerText)
+    if (rest) {
+      // A bold standalone title (no "at"/dash separator) is almost always the company.
+      if (boldTitle && !/\s+at\s+|[|–—]/i.test(rest)) e.company = rest
+      else assignRoleCompany(e, rest)
+    }
+    for (const p of pending) {
+      if (e.role && e.company) break
+      assignRoleCompany(e, p)
+    }
+    pending = []
+    return e
+  }
+  for (const line of lines) {
+    const t = line.text.trim()
+    if (!t) continue
+    const isBullet = BULLET.test(line.text)
+    const dr = !isBullet ? parseDateRange(t) : null
+    const bigGap = line.gapBefore > typicalGap * 1.4 && line.gapBefore < 900
     if (dr && dr.start) {
-      flushBullets()
-      cur = { company: '', role: '', employment: detectEmployment(line), start: dr.start, end: dr.end, present: dr.present, bulletsText: '' }
-      entries.push(cur)
-      const rest = stripDatePortion(line)
-      if (rest) assignRoleCompany(cur, rest)
-      for (const p of pending) {
-        if (cur.role && cur.company) break
-        assignRoleCompany(cur, p)
-      }
-      pending = []
+      cur = startEntry(t, dr)
+      continue
+    }
+    // Secondary split (only once an entry is open) for date-less layouts; and a
+    // first-entry fallback when the section has no dates at all.
+    const styleStart = !isBullet && cur != null && (bigGap || line.bold) && (!!cur.role || !!cur.company || bullets.length > 0)
+    const firstStart = !isBullet && !cur && !hasDates
+    if (styleStart || firstStart) {
+      cur = startEntry(t, null, line.bold)
       continue
     }
     if (isBullet) {
-      const b = line.replace(BULLET, '').trim()
+      const b = t.replace(BULLET, '').trim()
       if (b) bullets.push(b)
       pending = []
       continue
     }
     if (cur && bullets.length > 0) {
-      bullets.push(line)
+      bullets.push(t)
     } else if (cur && (!cur.role || !cur.company)) {
-      assignRoleCompany(cur, line)
+      assignRoleCompany(cur, t)
     } else {
-      pending.push(line)
+      pending.push(t)
       if (pending.length > 3) pending.shift()
     }
   }
@@ -286,11 +281,12 @@ function parseExperience(lines: string[]): Experience[] {
   return entries.filter((e) => e.company || e.role || e.bulletsText)
 }
 
-function parseEducation(lines: string[]): Education[] {
+function parseEducation(lines: Line[]): Education[] {
   const SCHOOL = /(university|college|institute|\bschool\b|polytechnic|academy)/i
   const DEGREE = /(bachelor|master|associate|ph\.?d|b\.?sc?|m\.?sc?|m\.?b\.?a|b\.?a\b|b\.?tech|m\.?tech|b\.?e\b|diploma|degree)/i
   const stripExtras = (l: string) =>
     l.replace(DATE_TOKEN, '').replace(/\bGPA.*$/i, '').replace(/\s{2,}/g, ' ').replace(/[|,–—]+\s*$/, '').trim()
+  const typicalGap = median(lines.map((l) => l.gapBefore).filter((g) => g > 0 && g < 900)) || 1
   const entries: Education[] = []
   const newEntry = (): Education => {
     const e: Education = { school: '', degree: '', start: '', end: '', extraDetails: [] }
@@ -298,18 +294,19 @@ function parseEducation(lines: string[]): Education[] {
     return e
   }
   let cur: Education | null = null
-  for (const raw of lines) {
-    const line = raw.trim()
-    if (!line) continue
-    if (!cur || (SCHOOL.test(line) && cur.school)) cur = newEntry()
-    if (SCHOOL.test(line) && !cur.school) cur.school = stripExtras(line)
-    else if (DEGREE.test(line) && !cur.degree) cur.degree = stripExtras(line)
-    const dr = parseDateRange(line)
+  for (const line of lines) {
+    const t = line.text.trim()
+    if (!t) continue
+    const bigGap = line.gapBefore > typicalGap * 1.4 && line.gapBefore < 900
+    if (!cur || (SCHOOL.test(t) && cur.school) || (bigGap && (cur.school || cur.degree))) cur = newEntry()
+    if (SCHOOL.test(t) && !cur.school) cur.school = stripExtras(t)
+    else if (DEGREE.test(t) && !cur.degree) cur.degree = stripExtras(t)
+    const dr = parseDateRange(t)
     if (dr && dr.start && !cur.start) {
       cur.start = dr.start
       cur.end = dr.end
     }
-    const gpa = line.match(/\bGPA[:\s]*([0-4](?:\.\d{1,2})?)(?:\s*\/\s*([0-5](?:\.\d+)?))?/i)
+    const gpa = t.match(/\bGPA[:\s]*([0-4](?:\.\d{1,2})?)(?:\s*\/\s*([0-5](?:\.\d+)?))?/i)
     if (gpa && !cur.extraDetails.some((d) => d.label === 'GPA')) {
       cur.extraDetails.push({ label: 'GPA', value: gpa[2] ? `${gpa[1]}/${gpa[2]}` : gpa[1] })
     }
@@ -317,28 +314,25 @@ function parseEducation(lines: string[]): Education[] {
   return entries.filter((e) => e.school || e.degree)
 }
 
-function parseProjects(lines: string[]): Project[] {
+function parseProjects(lines: Line[]): Project[] {
   const projects: Project[] = []
   let cur: Project | null = null
-  for (const raw of lines) {
-    const line = raw.trim()
-    if (!line) {
-      cur = null
-      continue
-    }
-    const isBullet = BULLET.test(raw)
-    if (!cur && !isBullet) {
+  for (const line of lines) {
+    const t = line.text.trim()
+    if (!t) continue
+    const isBullet = BULLET.test(line.text)
+    if (!isBullet && (!cur || line.gapBefore >= 2 || line.bold)) {
       cur = { name: '', link: '', description: '' }
-      const link = line.match(URL)
+      const link = t.match(URL)
       const isLink = !!link && /\/|github|gitlab|\.(io|com|dev|app|org|net)\b/i.test(link[0])
       if (isLink) cur.link = link![0].replace(/^https?:\/\//, '')
-      cur.name = (isLink ? line.replace(link![0], '') : line)
+      cur.name = (isLink ? t.replace(link![0], '') : t)
         .replace(/[|–—-]+\s*$/, '')
         .replace(/\s{2,}/g, ' ')
         .trim()
       projects.push(cur)
     } else if (cur) {
-      const d = line.replace(BULLET, '').trim()
+      const d = t.replace(BULLET, '').trim()
       if (d) cur.description = cur.description ? `${cur.description} ${d}` : d
     }
   }
@@ -352,31 +346,74 @@ function splitItems(s: string): string[] {
     .filter((x) => x && x.length <= 40)
 }
 
-function parseSkills(lines: string[]): SkillGroup[] {
+function parseSkills(lines: Line[]): SkillGroup[] {
   const groups: SkillGroup[] = []
   const loose: string[] = []
-  for (const raw of lines) {
-    const line = raw.trim().replace(BULLET, '')
-    if (!line) continue
-    const m = line.match(/^([A-Za-z][A-Za-z0-9 &/+#-]{1,30}):\s*(.+)$/)
+  for (const line of lines) {
+    const t = line.text.trim().replace(BULLET, '')
+    if (!t) continue
+    const m = t.match(/^([A-Za-z][A-Za-z0-9 &/+#-]{1,30}):\s*(.+)$/)
     if (m) {
       const items = splitItems(m[2])
       if (items.length) groups.push({ label: m[1].trim(), items, draft: '' })
     } else {
-      loose.push(...splitItems(line))
+      loose.push(...splitItems(t))
     }
   }
   if (loose.length) groups.push({ label: groups.length ? 'Other' : 'Skills', items: dedupe(loose), draft: '' })
   return groups.filter((g) => g.items.length)
 }
 
+// ── Extraction (file → Line[]) ───────────────────────────────────────────────
+
+/** Best-effort de-macro of a LaTeX source into readable text. */
+function deLatex(tex: string): string {
+  return tex
+    .replace(/(^|[^\\])%.*$/gm, '$1')
+    .replace(/\\(?:section|subsection|textbf|textit|emph|underline|textsc|href)\*?\s*\{[^{}]*\}\s*\{([^{}]*)\}/g, '$1')
+    .replace(/\\(?:section|subsection|textbf|textit|emph|underline|textsc)\*?\s*\{([^{}]*)\}/g, '$1')
+    .replace(/\\item\s*/g, '\n• ')
+    .replace(/\\\\/g, '\n')
+    .replace(/\\(?:begin|end)\s*\{[^}]*\}/g, '')
+    .replace(/\\([&%_#$])/g, '$1')
+    .replace(/\\[a-zA-Z]+\*?/g, ' ')
+    .replace(/[{}]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/** Synthesize `Line[]` from plain text: neutral style, `gapBefore` from blank lines. */
+function textToLines(text: string): Line[] {
+  const lines: Line[] = []
+  let prevBlank = true
+  for (const row of text.split('\n')) {
+    const t = row.trim()
+    if (!t) {
+      prevBlank = true
+      continue
+    }
+    lines.push({ text: t, x: 0, y: -lines.length, fontSize: 0, bold: false, gapBefore: prevBlank ? 2 : 1 })
+    prevBlank = false
+  }
+  return lines
+}
+
+async function extractLines(file: File): Promise<Line[]> {
+  const ext = (file.name.split('.').pop() || '').toLowerCase()
+  if (ext === 'pdf') return extractPdfLines(file)
+  let raw = await file.text()
+  if (ext === 'tex') raw = deLatex(raw)
+  return textToLines(dehyphenate(normalizeText(raw)))
+}
+
 // ── Assembly ─────────────────────────────────────────────────────────────────
 
-export function parseResumeText(text: string): Partial<ResumeData> {
-  const sections = splitSections(text)
+export function parseResumeLines(lines: Line[]): Partial<ResumeData> {
+  const sections = splitSections(lines)
   const data: Partial<ResumeData> = { ...parseContact(sections._header) }
 
-  const summary = sections.summary.map((l) => l.trim()).filter(Boolean).join(' ').trim()
+  const summary = sections.summary.map((l) => l.text.trim()).filter(Boolean).join(' ').trim()
   if (summary) data.summary = summary
 
   const experience = parseExperience(sections.experience)
@@ -394,9 +431,14 @@ export function parseResumeText(text: string): Partial<ResumeData> {
   return data
 }
 
+/** Parse résumé text directly (text formats + tests). PDFs go through `importResume`. */
+export function parseResumeText(text: string): Partial<ResumeData> {
+  return parseResumeLines(textToLines(text))
+}
+
 export async function importResume(file: File): Promise<ImportOutcome> {
-  const text = await extractText(file)
-  const parsed = parseResumeText(text)
+  const lines = await extractLines(file)
+  const parsed = parseResumeLines(lines)
   const data = normalizeResumeData(parsed as Record<string, unknown>)
   const ok = Boolean(
     data.firstName ||
