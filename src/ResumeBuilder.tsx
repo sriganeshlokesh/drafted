@@ -562,9 +562,31 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: '#efedfb', border: '1px solid #ddd8f7', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: '#e6e2fb', borderColor: '#c9c1f2' }}>
             <UploadIcon />{!isMobile && 'Import'}
           </Hover>
-          <Hover as="button" onClick={() => patch({ resetDialogOpen: true })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: '#6b6a72', background: '#f0eff2', border: '1px solid #d5d4d8', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: '#e5e4e8', borderColor: '#bbb' }}>
-            <span>↺</span>{!isMobile && ' Reset'}
-          </Hover>
+          <div style={{ position: 'relative' }}>
+            <Hover as="button" onClick={() => patch({ resetDialogOpen: !s.resetDialogOpen })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: '#6b6a72', background: '#f0eff2', border: '1px solid #d5d4d8', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: '#e5e4e8', borderColor: '#bbb' }}>
+              <span>↺</span>{!isMobile && ' Reset'}
+            </Hover>
+            {s.resetDialogOpen && (
+              <>
+                <div onClick={() => patch({ resetDialogOpen: false })} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,.16)', border: '1px solid #e5e4e8', padding: '8px', zIndex: 41, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px', whiteSpace: 'nowrap' }}>
+                  <div style={{ padding: '4px 6px 8px', borderBottom: '1px solid #f0eff2', marginBottom: '4px' }}>
+                    <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: '#1a1a1a' }}>Reset?</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#999', lineHeight: 1.4 }}>This can't be undone.</p>
+                  </div>
+                  <Hover as="button" onClick={() => { localStorage.removeItem(SAVE_KEY); setState(initialState) }} style={{ width: '100%', padding: '8px 14px', fontSize: '13px', fontWeight: 600, textAlign: 'left', borderRadius: '8px', cursor: 'pointer', border: 'none', color: '#fff', background: '#c0392b' }} hoverStyle={{ filter: 'brightness(1.1)' }}>
+                    Reset All
+                  </Hover>
+                  <Hover as="button" onClick={() => patch({ ...sectionResets[s.step], resetDialogOpen: false })} style={{ width: '100%', padding: '8px 14px', fontSize: '13px', fontWeight: 500, textAlign: 'left', borderRadius: '8px', cursor: 'pointer', color: '#c0392b', background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.2)' }} hoverStyle={{ background: 'rgba(192,57,43,.14)' }}>
+                    Reset "{stepMeta[s.step].label}"
+                  </Hover>
+                  <Hover as="button" onClick={() => patch({ resetDialogOpen: false })} style={{ width: '100%', padding: '8px 14px', fontSize: '13px', fontWeight: 500, textAlign: 'left', borderRadius: '8px', cursor: 'pointer', border: 'none', color: '#555', background: '#f0eff2' }} hoverStyle={{ background: '#e5e4e8' }}>
+                    Cancel
+                  </Hover>
+                </div>
+              </>
+            )}
+          </div>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#9b9a97' }}>
             {s.saveState === 'saving' ? (
               <span style={{ width: '11px', height: '11px', border: '2px solid #d8d6e8', borderTopColor: '#9b9a97', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
@@ -824,28 +846,6 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
         onFile={runImport}
         onClose={() => patch({ importOpen: false, importError: null })}
       />
-
-      {/* RESET CONFIRMATION DIALOG */}
-      {s.resetDialogOpen && (
-        <>
-          <div onClick={() => patch({ resetDialogOpen: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 40 }} />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'calc(100% - 32px)', maxWidth: 420, background: '#fff', borderRadius: '16px', padding: '28px 28px 22px', boxShadow: '0 20px 60px rgba(0,0,0,.22)', zIndex: 41 }}>
-            <p style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 700, color: '#1a1a1a' }}>Reset your résumé?</p>
-            <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#888', lineHeight: 1.6 }}>Choose what to clear — this can't be undone.</p>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <Hover as="button" onClick={() => patch({ resetDialogOpen: false })} style={{ padding: '9px 16px', fontSize: '13px', fontWeight: 500, color: '#555', background: '#f0eff2', border: 'none', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: '#e5e4e8' }}>
-                Cancel
-              </Hover>
-              <Hover as="button" onClick={() => patch({ ...sectionResets[s.step], resetDialogOpen: false })} style={{ padding: '9px 16px', fontSize: '13px', fontWeight: 500, color: '#c0392b', background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.25)', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: 'rgba(192,57,43,.14)' }}>
-                Reset "{stepMeta[s.step].label}"
-              </Hover>
-              <Hover as="button" onClick={() => { localStorage.removeItem(SAVE_KEY); setState(initialState) }} style={{ padding: '9px 16px', fontSize: '13px', fontWeight: 600, color: '#fff', background: '#c0392b', border: 'none', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.1)' }}>
-                Reset all
-              </Hover>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* HIDDEN PDF RENDER TARGET — natural size, no CSS transform, used by html2canvas */}
       <div
