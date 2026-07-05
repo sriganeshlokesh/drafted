@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 export const labelStyle: CSSProperties = {
   display: 'block',
   fontSize: '13.5px',
-  color: '#8e8e93',
+  color: 'var(--c-text-label, #8e8e93)',
   margin: '0 0 8px',
 }
 
@@ -14,9 +14,9 @@ export const inputStyle: CSSProperties = {
   boxSizing: 'border-box',
   fontSize: '15px',
   lineHeight: 1.45,
-  color: '#2c2c34',
-  background: '#fff',
-  border: '1px solid #e4e4e9',
+  color: 'var(--c-text, #2c2c34)',
+  background: 'var(--c-bg, #fff)',
+  border: '1px solid var(--c-border, #e4e4e9)',
   borderRadius: '8px',
   padding: '9px 12px',
   outline: 'none',
@@ -46,17 +46,17 @@ export const checkBadge: CSSProperties = {
 export const removeBtn: CSSProperties = {
   fontSize: '13.5px',
   fontWeight: 500,
-  color: '#5c5c63',
-  background: '#fff',
-  border: '1px solid #e4e4e9',
+  color: 'var(--c-remove-text, #5c5c63)',
+  background: 'var(--c-bg, #fff)',
+  border: '1px solid var(--c-border, #e4e4e9)',
   borderRadius: '7px',
   padding: '8px 16px',
   cursor: 'pointer',
 }
 export const removeBtnHover: CSSProperties = {
-  background: '#fbecec',
-  borderColor: '#e8b4b0',
-  color: '#c0492f',
+  background: 'var(--c-remove-hover-bg, #fbecec)',
+  borderColor: 'var(--c-remove-hover-border, #e8b4b0)',
+  color: 'var(--c-remove-hover-text, #c0492f)',
 }
 
 export const addBtn: CSSProperties = {
@@ -64,13 +64,13 @@ export const addBtn: CSSProperties = {
   fontSize: '14px',
   fontWeight: 500,
   color: 'var(--accent,#5b50e0)',
-  background: '#f3f2fc',
-  border: '1px solid #ddd9f5',
+  background: 'var(--c-accent-tint, #f3f2fc)',
+  border: '1px solid var(--c-accent-tint-border, #ddd9f5)',
   borderRadius: '9px',
   padding: '12px',
   cursor: 'pointer',
 }
-export const addBtnHover: CSSProperties = { background: '#ebe9fb' }
+export const addBtnHover: CSSProperties = { background: 'var(--c-accent-tint-hover, #ebe9fb)' }
 
 export const dragHandle: CSSProperties = {
   position: 'absolute',
@@ -88,12 +88,12 @@ export const dragHandle: CSSProperties = {
   cursor: 'grab',
   fontSize: '21px',
   letterSpacing: '-2px',
-  color: '#b3b1ab',
+  color: 'var(--c-text-muted, #b3b1ab)',
   userSelect: 'none',
 }
 export const dragHandleHover: CSSProperties = {
-  background: '#f3f2fc',
-  borderColor: '#d8d8df',
+  background: 'var(--c-accent-tint, #f3f2fc)',
+  borderColor: 'var(--c-drag-hover-border, #d8d8df)',
   color: 'var(--accent,#5b50e0)',
 }
 
@@ -101,7 +101,7 @@ export const dragHandleHover: CSSProperties = {
 export const entryCard: CSSProperties = {
   position: 'relative',
   padding: '0 0 20px',
-  borderBottom: '1px solid #ededed',
+  borderBottom: '1px solid var(--c-border-subtle, #ededed)',
   margin: '0 0 20px',
 }
 
@@ -125,6 +125,6 @@ export const toolbarBtn: CSSProperties = {
   borderRadius: '5px',
   cursor: 'pointer',
   fontSize: '14px',
-  color: '#5c5c63',
+  color: 'var(--c-text-subtle, #5c5c63)',
 }
-export const toolbarBtnHover: CSSProperties = { background: '#eceaf6' }
+export const toolbarBtnHover: CSSProperties = { background: 'var(--c-toolbar-active, #eceaf6)' }

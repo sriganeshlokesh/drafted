@@ -35,7 +35,7 @@ const SmartPaste = Extension.create({
   },
 })
 
-const activeBtnStyle: CSSProperties = { background: '#eceaf6', color: 'var(--accent,#5b50e0)' }
+const activeBtnStyle: CSSProperties = { background: 'var(--c-toolbar-active, #eceaf6)', color: 'var(--accent,#5b50e0)' }
 
 export function RichTextEditor({ value, onChange }: Props) {
   const lastEmitted = useRef<string>(value)
@@ -62,8 +62,8 @@ export function RichTextEditor({ value, onChange }: Props) {
   if (!editor) return null
 
   return (
-    <div style={{ border: '1px solid #e4e4e9', borderRadius: '8px', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '7px 9px', borderBottom: '1px solid #efefef', background: '#fafafa' }}>
+    <div style={{ border: '1px solid var(--c-border, #e4e4e9)', borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '7px 9px', borderBottom: '1px solid var(--c-toolbar-border, #efefef)', background: 'var(--c-toolbar-bg, #fafafa)' }}>
         <Hover
           as="button"
           onClick={() => editor.chain().focus().toggleBold().run()}

@@ -75,9 +75,19 @@ const initialState: State = {
 const slug = (t: string) => (t || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 const stripProto = (s: string) => (s || '').replace(/^https?:\/\/(www\.)?/, '')
 
+const DARK_KEY = 'drafted:darkMode'
+
 export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f', paperSize = 'A4' }: Props) {
   const [state, setState] = useState<State>(initialState)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    try { return localStorage.getItem(DARK_KEY) === 'true' } catch { return false }
+  })
+  const toggleDark = () => setDarkMode(prev => {
+    const next = !prev
+    try { localStorage.setItem(DARK_KEY, String(next)) } catch {}
+    return next
+  })
   const scrollRef = useRef<HTMLDivElement>(null)
   const paperRef = useRef<HTMLDivElement>(null)
   const pdfRenderRef = useRef<HTMLDivElement>(null)
@@ -342,6 +352,10 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     clearTimeout(saveTimer.current)
   }, [])
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
+
   // ── Measure paper → page count + fit scale ─────────────────────────────
   const measure = () => {
     const el = paperRef.current
@@ -417,10 +431,10 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   const completePct = Math.round((checks.filter(Boolean).length / checks.length) * 100)
   const isEmpty = completePct === 0
   const complete = completePct === 100
-  const completeColor = complete ? accent2 : accent
-  const completeBg = complete ? 'rgba(245,135,31,.12)' : '#efeefb'
-  const completeBorder = complete ? 'rgba(245,135,31,.38)' : 'rgba(91,80,224,.22)'
-  const ringBg = `conic-gradient(${completeColor} ${completePct * 3.6}deg, #e4e3ee 0)`
+  const completeColor = complete ? accent2 : darkMode ? '#c4bcf8' : accent
+  const completeBg = complete ? 'rgba(245,135,31,.12)' : 'var(--c-accent-tint, #efeefb)'
+  const completeBorder = complete ? 'rgba(245,135,31,.38)' : 'var(--c-accent-tint-border, rgba(91,80,224,.22))'
+  const ringBg = `conic-gradient(${completeColor} ${completePct * 3.6}deg, var(--c-ring-track, #e4e3ee) 0)`
 
   const contactRaw = [
     { text: s.email, link: true },
@@ -443,8 +457,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
-    background: '#fff',
-    color: '#2c2c34',
+    background: 'var(--c-bg, #fff)',
+    color: 'var(--c-text, #2c2c34)',
     '--accent': accent,
     '--accent2': accent2,
     '--page-w': `${pageW}px`,
@@ -542,37 +556,48 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   )
 
   return (
-    <div style={rootStyle}>
+    <div style={rootStyle} data-theme={darkMode ? 'dark' : undefined}>
       {/* TOP BAR */}
-      <header style={{ flex: 'none', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid #ededec', background: '#fff', zIndex: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#37352f' }}>
+      <header style={{ flex: 'none', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid var(--c-border-subtle, #ededec)', background: 'var(--c-bg, #fff)', zIndex: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: 'var(--c-text-dim, #37352f)' }}>
           <img src="/logo.svg" alt="Drafted" style={{ width: '34px', height: '34px', display: 'block' }} />
           <span title="Résumé completeness" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: completeBg, border: `1px solid ${completeBorder}`, borderRadius: '20px', padding: '3px 11px 3px 4px' }}>
             {complete ? (
               <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: accent2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px' }}>✓</span>
             ) : (
               <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: ringBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#fff', display: 'block' }} />
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--c-accent-tint, #efeefb)', display: 'block' }} />
               </span>
             )}
             <span style={{ fontSize: '12px', fontWeight: 600, color: completeColor }}>{completePct}%</span>
           </span>
+          {/* Dark mode toggle — mobile only (desktop uses fixed button) */}
+          <Hover
+            as="button"
+            onClick={toggleDark}
+            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="dark-toggle-mobile"
+            style={{ alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', border: '1px solid var(--c-border-subtle, #ededec)', borderRadius: '8px', background: 'var(--c-bg-subtle, #fafaf9)', cursor: 'pointer', fontSize: '15px', outline: 'none' }}
+            hoverStyle={{ background: 'var(--c-bg-muted, #f0eff2)' }}
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </Hover>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
-          <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: '#efedfb', border: '1px solid #ddd8f7', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: '#e6e2fb', borderColor: '#c9c1f2' }}>
+          <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}>
             <UploadIcon />{!isMobile && 'Import'}
           </Hover>
           <div style={{ position: 'relative' }}>
-            <Hover as="button" onClick={() => patch({ resetDialogOpen: !s.resetDialogOpen })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: '#6b6a72', background: '#f0eff2', border: '1px solid #d5d4d8', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: '#e5e4e8', borderColor: '#bbb' }}>
+            <Hover as="button" onClick={() => patch({ resetDialogOpen: !s.resetDialogOpen })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px solid var(--c-reset-border, #d5d4d8)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)', borderColor: 'var(--c-reset-border, #bbb)' }}>
               <span>↺</span>{!isMobile && ' Reset'}
             </Hover>
             {s.resetDialogOpen && (
               <>
                 <div onClick={() => patch({ resetDialogOpen: false })} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,.16)', border: '1px solid #e5e4e8', padding: '8px', zIndex: 41, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px', whiteSpace: 'nowrap' }}>
-                  <div style={{ padding: '4px 6px 8px', borderBottom: '1px solid #f0eff2', marginBottom: '4px' }}>
-                    <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: '#1a1a1a' }}>Reset?</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#999', lineHeight: 1.4 }}>This can't be undone.</p>
+                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, background: 'var(--c-bg-elevated, #fff)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,.16)', border: '1px solid var(--c-border, #e5e4e8)', padding: '8px', zIndex: 41, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px', whiteSpace: 'nowrap' }}>
+                  <div style={{ padding: '4px 6px 8px', borderBottom: '1px solid var(--c-border-subtle, #f0eff2)', marginBottom: '4px' }}>
+                    <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: 'var(--c-text, #1a1a1a)' }}>Reset?</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--c-text-muted, #999)', lineHeight: 1.4 }}>This can't be undone.</p>
                   </div>
                   <Hover as="button" onClick={() => { localStorage.removeItem(SAVE_KEY); setState(initialState) }} style={{ width: '100%', padding: '8px 14px', fontSize: '13px', fontWeight: 600, textAlign: 'left', borderRadius: '8px', cursor: 'pointer', border: 'none', color: '#fff', background: '#c0392b' }} hoverStyle={{ filter: 'brightness(1.1)' }}>
                     Reset All
@@ -580,16 +605,16 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                   <Hover as="button" onClick={() => patch({ ...sectionResets[s.step], resetDialogOpen: false })} style={{ width: '100%', padding: '8px 14px', fontSize: '13px', fontWeight: 500, textAlign: 'left', borderRadius: '8px', cursor: 'pointer', color: '#c0392b', background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.2)' }} hoverStyle={{ background: 'rgba(192,57,43,.14)' }}>
                     Reset "{stepMeta[s.step].label}"
                   </Hover>
-                  <Hover as="button" onClick={() => patch({ resetDialogOpen: false })} style={{ width: '100%', padding: '8px 14px', fontSize: '13px', fontWeight: 500, textAlign: 'left', borderRadius: '8px', cursor: 'pointer', border: 'none', color: '#555', background: '#f0eff2' }} hoverStyle={{ background: '#e5e4e8' }}>
+                  <Hover as="button" onClick={() => patch({ resetDialogOpen: false })} style={{ width: '100%', padding: '8px 14px', fontSize: '13px', fontWeight: 500, textAlign: 'left', borderRadius: '8px', cursor: 'pointer', border: 'none', color: 'var(--c-text-subtle, #555)', background: 'var(--c-reset-bg, #f0eff2)' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)' }}>
                     Cancel
                   </Hover>
                 </div>
               </>
             )}
           </div>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#9b9a97' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--c-text-muted, #9b9a97)' }}>
             {s.saveState === 'saving' ? (
-              <span style={{ width: '11px', height: '11px', border: '2px solid #d8d6e8', borderTopColor: '#9b9a97', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
+              <span style={{ width: '11px', height: '11px', border: '2px solid var(--c-border, #d8d6e8)', borderTopColor: 'var(--c-text-muted, #9b9a97)', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
             ) : (
               <><span style={{ color: accent2 }}>✓</span>{!isMobile && ' Saved'}</>
             )}
@@ -607,15 +632,15 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
             {s.menuOpen && (
               <>
                 <div onClick={() => patch({ menuOpen: false })} style={{ position: 'fixed', inset: 0, zIndex: 18 }} />
-                <div style={{ position: 'absolute', top: '42px', right: 0, width: '220px', background: '#fff', border: '1px solid #e6e5e1', borderRadius: '12px', boxShadow: '0 12px 36px rgba(0,0,0,.15)', padding: '6px', zIndex: 20 }}>
-                  <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.06em', color: '#9b9a97', padding: '8px 10px 6px' }}>CHOOSE A FORMAT</div>
+                <div style={{ position: 'absolute', top: '42px', right: 0, width: '220px', background: 'var(--c-bg-elevated, #fff)', border: '1px solid var(--c-border-subtle, #e6e5e1)', borderRadius: '12px', boxShadow: '0 12px 36px rgba(0,0,0,.15)', padding: '6px', zIndex: 20 }}>
+                  <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.06em', color: 'var(--c-text-muted, #9b9a97)', padding: '8px 10px 6px' }}>CHOOSE A FORMAT</div>
                   {formatOptions.map(([key, label, fext]) => {
                     const active = key === s.format
                     return (
-                      <Hover key={key} onClick={() => runDownload(key)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', background: active ? '#f3f2fc' : 'transparent' }} hoverStyle={{ background: '#f3f2fc' }}>
+                      <Hover key={key} onClick={() => runDownload(key)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', background: active ? 'var(--c-accent-tint, #f3f2fc)' : 'transparent' }} hoverStyle={{ background: 'var(--c-accent-tint, #f3f2fc)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 500, color: '#2c2c34' }}>{label}</span>
-                          <span style={{ fontSize: '12px', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: '#9b9a97' }}>{fext}</span>
+                          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--c-text, #2c2c34)' }}>{label}</span>
+                          <span style={{ fontSize: '12px', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: 'var(--c-text-muted, #9b9a97)' }}>{fext}</span>
                         </div>
                         {active && <span style={{ color: 'var(--accent,#5b50e0)', fontSize: '15px', fontWeight: 600 }}>✓</span>}
                       </Hover>
@@ -629,28 +654,28 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       </header>
 
       {/* STEPPER */}
-      <nav style={{ flex: 'none', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0', borderBottom: '1px solid #ededec', background: '#fafaf9', overflowX: 'auto', scrollbarWidth: 'none', padding: '0 16px' } as CSSProperties}>
+      <nav style={{ flex: 'none', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0', borderBottom: '1px solid var(--c-border-subtle, #ededec)', background: 'var(--c-bg-subtle, #fafaf9)', overflowX: 'auto', scrollbarWidth: 'none', padding: '0 16px' } as CSSProperties}>
         {stepMeta.map((m, i) => {
           const activeStep = s.step === i
           const isPast = i < s.step
           const sectionDone = checks[i]
           const showAlert = isPast && !sectionDone
-          const badgeBg = activeStep ? accent : sectionDone ? 'rgba(245,135,31,.15)' : showAlert ? accent2 : '#fff'
-          const badgeColor = activeStep ? '#fff' : sectionDone ? accent2 : showAlert ? '#fff' : '#b3b1ab'
-          const badgeBorder = activeStep ? accent : sectionDone || showAlert ? accent2 : '#dcdbd6'
+          const badgeBg = activeStep ? accent : sectionDone ? 'rgba(245,135,31,.15)' : showAlert ? accent2 : 'var(--c-bg, #fff)'
+          const badgeColor = activeStep ? '#fff' : sectionDone ? accent2 : showAlert ? '#fff' : 'var(--c-text-muted, #b3b1ab)'
+          const badgeBorder = activeStep ? accent : sectionDone || showAlert ? accent2 : 'var(--c-border, #dcdbd6)'
           const badgeLabel = activeStep ? String(i + 1) : sectionDone ? '✓' : showAlert ? '!' : String(i + 1)
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-              {i > 0 && <div style={{ width: '36px', height: '1px', background: '#dcdbd6' }} />}
+              {i > 0 && <div style={{ width: '36px', height: '1px', background: 'var(--c-border, #dcdbd6)' }} />}
               <Hover
                 onClick={() => patch({ step: i })}
-                style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: activeStep ? '5px 12px 5px 5px' : '5px 8px 5px 5px', borderRadius: '20px', cursor: 'pointer', background: activeStep ? '#eeeeec' : 'transparent', border: 'none', transition: 'background .1s' }}
-                hoverStyle={{ background: '#eeeeec' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: activeStep ? '5px 12px 5px 5px' : '5px 8px 5px 5px', borderRadius: '20px', cursor: 'pointer', background: activeStep ? 'var(--c-bg-muted, #eeeeec)' : 'transparent', border: 'none', transition: 'background .1s' }}
+                hoverStyle={{ background: 'var(--c-bg-muted, #eeeeec)' }}
               >
                 <span style={{ flex: 'none', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, background: badgeBg, color: badgeColor, border: `1.5px solid ${badgeBorder}` }}>
                   {badgeLabel}
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: activeStep ? 600 : 400, color: activeStep ? '#37352f' : '#9b9a97', whiteSpace: 'nowrap' }}>{m.label}</span>
+                <span style={{ fontSize: '13px', fontWeight: activeStep ? 600 : 400, color: activeStep ? 'var(--c-text-dim, #37352f)' : 'var(--c-text-muted, #9b9a97)', whiteSpace: 'nowrap' }}>{m.label}</span>
               </Hover>
             </div>
           )
@@ -658,7 +683,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       </nav>
 
       {isMobile && (
-        <div style={{ flex: 'none', display: 'flex', padding: '8px 16px', gap: '10px', borderBottom: '1px solid #ededec', background: '#fff' }}>
+        <div style={{ flex: 'none', display: 'flex', padding: '8px 16px', gap: '10px', borderBottom: '1px solid var(--c-border-subtle, #ededec)', background: 'var(--c-bg, #fff)' }}>
           <MobileTabBtn active={s.mobilePane === 'edit'} onClick={() => patch({ mobilePane: 'edit' })}>✏️ Edit</MobileTabBtn>
           <MobileTabBtn active={s.mobilePane === 'preview'} onClick={() => patch({ mobilePane: 'preview' })}>📄 Preview</MobileTabBtn>
         </div>
@@ -666,20 +691,20 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
       <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', minHeight: 0 }}>
         {/* FORM COLUMN */}
-        <section style={{ width: isMobile ? '100%' : '560px', flex: 'none', display: isMobile && s.mobilePane === 'preview' ? 'none' : 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid #ededec', minWidth: 0, background: '#fff' }}>
+        <section style={{ width: isMobile ? '100%' : '560px', flex: 'none', display: isMobile && s.mobilePane === 'preview' ? 'none' : 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--c-border-subtle, #ededec)', minWidth: 0, background: 'var(--c-bg, #fff)' }}>
           <div style={{ flex: 'none', padding: isMobile ? '14px 18px 10px' : '18px 20px 12px' }}>
-            <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-.01em', color: '#2c2c34', margin: '0 0 4px' }}>{stepMeta[s.step].title}</h1>
-            <p style={{ fontSize: '14px', color: '#9b9a97', margin: 0 }}>{stepMeta[s.step].subtitle}</p>
+            <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-.01em', color: 'var(--c-text, #2c2c34)', margin: '0 0 4px' }}>{stepMeta[s.step].title}</h1>
+            <p style={{ fontSize: '14px', color: 'var(--c-text-muted, #9b9a97)', margin: 0 }}>{stepMeta[s.step].subtitle}</p>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '6px 18px 20px' : '6px 20px 24px' }}>
             {/* STEP 0 : PERSONAL INFO */}
             {s.step === 0 && (
               <div>
-                <div style={{ margin: '0 0 16px', padding: '12px 14px 14px', background: '#f7f7fb', border: '1px solid #e8e7f3', borderRadius: '10px' }}>
+                <div style={{ margin: '0 0 16px', padding: '12px 14px 14px', background: 'var(--c-bg-elevated, #f7f7fb)', border: '1px solid var(--c-border, #e8e7f3)', borderRadius: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 12px' }}>
                     <span style={{ flex: 'none', width: '20px', height: '20px', borderRadius: '6px', background: 'rgba(245,135,31,.14)', border: '1px solid rgba(245,135,31,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'var(--accent2,#f5871f)' }}>◎</span>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#2c2c34' }}>Applying for</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text, #2c2c34)' }}>Applying for</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '11px' }}>
                     <div>
@@ -693,7 +718,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '13px 0 0', fontSize: '12.5px', color: '#9b9a97' }}>
                     <span style={{ color: 'var(--accent2,#f5871f)' }}>↓</span>
-                    <span style={{ fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: '#6b6a72' }}>{fileName}.{ext}</span>
+                    <span style={{ fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: 'var(--c-text-subtle, #6b6a72)' }}>{fileName}.{ext}</span>
                   </div>
                 </div>
 
@@ -755,9 +780,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           </div>
 
           {/* FOOTER NAV */}
-          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '18px', padding: '13px 24px', borderTop: '1px solid #ededec', background: '#fff' }}>
-            <Hover as="button" onClick={() => patch({ step: Math.max(0, s.step - 1) })} disabled={s.step === 0} style={{ flex: 'none', fontSize: '13.5px', fontWeight: 500, color: s.step === 0 ? '#cfcdc7' : '#37352f', background: '#fff', border: '1px solid #e6e5e1', borderRadius: '7px', padding: '9px 18px', cursor: s.step === 0 ? 'default' : 'pointer' }} hoverStyle={{ background: '#f7f6f4' }}>Prev</Hover>
-            <div style={{ flex: 1, height: '7px', borderRadius: '5px', background: '#ebebf0', overflow: 'hidden' }}>
+          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '18px', padding: '13px 24px', borderTop: '1px solid var(--c-border-subtle, #ededec)', background: 'var(--c-bg, #fff)' }}>
+            <Hover as="button" onClick={() => patch({ step: Math.max(0, s.step - 1) })} disabled={s.step === 0} style={{ flex: 'none', fontSize: '13.5px', fontWeight: 500, color: s.step === 0 ? 'var(--c-border, #cfcdc7)' : 'var(--c-text-dim, #37352f)', background: 'var(--c-bg, #fff)', border: '1px solid var(--c-border-subtle, #e6e5e1)', borderRadius: '7px', padding: '9px 18px', cursor: s.step === 0 ? 'default' : 'pointer' }} hoverStyle={{ background: 'var(--c-bg-subtle, #f7f6f4)' }}>Prev</Hover>
+            <div style={{ flex: 1, height: '7px', borderRadius: '5px', background: 'var(--c-border, #ebebf0)', overflow: 'hidden' }}>
               <div style={{ height: '100%', background: 'var(--accent,#5b50e0)', width: `${((s.step + 1) / 5) * 100}%`, borderRadius: '5px', transition: 'width .25s ease' }} />
             </div>
             <Hover as="button" onClick={isLast ? download : () => patch({ step: Math.min(4, s.step + 1) })} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '13.5px', fontWeight: 600, color: '#fff', background: 'var(--accent,#5b50e0)', border: 'none', borderRadius: '7px', padding: '9px 20px', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.08)' }}>{isLast ? '↓ Download' : 'Next'}</Hover>
@@ -765,10 +790,10 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
         </section>
 
         {/* PREVIEW PANE */}
-        <section style={{ flex: 1, display: isMobile && s.mobilePane === 'edit' ? 'none' : 'flex', flexDirection: 'column', minWidth: 0, background: '#f0eff2', position: 'relative' }}>
-          <div style={{ flex: 'none', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid #e2e1e4', background: '#faf9fb' }}>
-            <span style={{ fontSize: '12px', fontWeight: 500, color: '#6b6a72', background: '#e8e7ec', borderRadius: '20px', padding: '3px 10px' }}>Page {s.currentPage} of {s.pages}</span>
-            <div style={{ display: 'flex', gap: '2px', background: '#e4e3e8', borderRadius: '7px', padding: '2px' }}>
+        <section style={{ flex: 1, display: isMobile && s.mobilePane === 'edit' ? 'none' : 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--c-bg-muted, #f0eff2)', position: 'relative' }}>
+          <div style={{ flex: 'none', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid var(--c-border-subtle, #e2e1e4)', background: 'var(--c-preview-toolbar-bg, #faf9fb)' }}>
+            <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-page-counter-bg, #e8e7ec)', borderRadius: '20px', padding: '3px 10px' }}>Page {s.currentPage} of {s.pages}</span>
+            <div style={{ display: 'flex', gap: '2px', background: 'var(--c-preview-tab-bg, #e4e3e8)', borderRadius: '7px', padding: '2px' }}>
               <TabButton active={s.view === 'preview'} onClick={() => patch({ view: 'preview' })}>Typeset</TabButton>
               <TabButton active={s.view === 'source'} onClick={() => patch({ view: 'source' })}>.tex</TabButton>
             </div>
@@ -776,7 +801,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
           <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: 'auto', padding: '34px 30px 70px', display: 'flex', justifyContent: 'center', alignItems: s.view === 'preview' && isEmpty ? 'center' : 'flex-start' }}>
             {s.view === 'preview' && isEmpty ? (
-              <div style={{ width: '100%', maxWidth: 560, padding: '80px 40px', background: '#fff', border: '2px dashed #d0cfe8', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+              <div style={{ width: '100%', maxWidth: 560, padding: '80px 40px', background: 'var(--c-bg, #fff)', border: '2px dashed var(--c-accent-tint-border, #d0cfe8)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
                 <div style={{ position: 'relative', width: 90, height: 110 }}>
                   <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
                     <rect x="4" y="4" width="68" height="88" rx="8" fill="#eeedf5"/>
@@ -786,8 +811,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                   <div style={{ position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 22, lineHeight: '1' }}>+</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 700, color: '#2a2a2a', fontFamily: 'ui-sans-serif,sans-serif' }}>Your résumé starts here</p>
-                  <p style={{ margin: 0, fontSize: 15, color: '#888', lineHeight: 1.6, maxWidth: 340, fontFamily: 'ui-sans-serif,sans-serif' }}>Fill in the form on the left and your typeset résumé will appear on this page as you go.</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 700, color: 'var(--c-text, #2a2a2a)', fontFamily: 'ui-sans-serif,sans-serif' }}>Your résumé starts here</p>
+                  <p style={{ margin: 0, fontSize: 15, color: 'var(--c-text-muted, #888)', lineHeight: 1.6, maxWidth: 340, fontFamily: 'ui-sans-serif,sans-serif' }}>Fill in the form on the left and your typeset résumé will appear on this page as you go.</p>
                 </div>
               </div>
             ) : s.view === 'preview' ? (
@@ -817,16 +842,16 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           </div>
 
           {/* FILENAME STATUS BAR */}
-          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '34px', borderTop: '1px solid #e2e1e4', background: '#faf9fb' }}>
+          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '34px', borderTop: '1px solid var(--c-border-subtle, #e2e1e4)', background: 'var(--c-preview-toolbar-bg, #faf9fb)' }}>
             <span style={{ color: 'var(--accent2,#f5871f)', fontSize: '12px' }}>↓</span>
-            <span style={{ fontSize: '12.5px', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: '#6b6a72' }}>{fileName}.{ext}</span>
+            <span style={{ fontSize: '12.5px', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: 'var(--c-text-subtle, #6b6a72)' }}>{fileName}.{ext}</span>
           </div>
 
           {/* COMPILING OVERLAY */}
           {s.compiling && (
-            <div style={{ position: 'absolute', inset: '42px 0 34px 0', background: 'rgba(240,239,242,.78)', backdropFilter: 'blur(2px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', zIndex: 8 }}>
-              <div style={{ width: '34px', height: '34px', border: '3px solid #dcdbe2', borderTopColor: 'var(--accent,#5b50e0)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
-              <div style={{ fontSize: '13.5px', color: '#6b6a72', fontWeight: 500 }}>Generating {s.format} file…</div>
+            <div style={{ position: 'absolute', inset: '42px 0 34px 0', background: 'var(--c-overlay-bg, rgba(240,239,242,.78))', backdropFilter: 'blur(2px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', zIndex: 8 }}>
+              <div style={{ width: '34px', height: '34px', border: '3px solid var(--c-overlay-spinner-track, #dcdbe2)', borderTopColor: 'var(--accent,#5b50e0)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
+              <div style={{ fontSize: '13.5px', color: 'var(--c-text-subtle, #6b6a72)', fontWeight: 500 }}>Generating {s.format} file…</div>
             </div>
           )}
         </section>
@@ -834,7 +859,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
       {/* TOAST */}
       {s.toast && (
-        <div style={{ position: 'fixed', bottom: '22px', left: '50%', transform: 'translateX(-50%)', background: '#2c2c34', color: '#fff', fontSize: '13.5px', fontWeight: 500, padding: '11px 18px', borderRadius: '9px', boxShadow: '0 8px 30px rgba(0,0,0,.25)', display: 'flex', alignItems: 'center', gap: '9px', animation: 'pop .2s ease', zIndex: 20 }}>
+        <div style={{ position: 'fixed', bottom: '22px', left: '50%', transform: 'translateX(-50%)', background: 'var(--c-toast-bg, #2c2c34)', color: 'var(--c-toast-text, #fff)', fontSize: '13.5px', fontWeight: 500, padding: '11px 18px', borderRadius: '9px', boxShadow: '0 8px 30px rgba(0,0,0,.25)', display: 'flex', alignItems: 'center', gap: '9px', animation: 'pop .2s ease', zIndex: 20 }}>
           <span style={{ color: 'var(--accent2,#f5871f)', fontSize: '15px' }}>✓</span> {fileName}.{ext} downloaded
         </div>
       )}
@@ -846,6 +871,18 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
         onFile={runImport}
         onClose={() => patch({ importOpen: false, importError: null })}
       />
+
+      {/* Dark mode toggle — desktop floating button (bottom-right) */}
+      <Hover
+        as="button"
+        onClick={toggleDark}
+        title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        className="dark-toggle-desktop"
+        style={{ position: 'fixed', bottom: '24px', right: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', border: '1px solid var(--c-border-subtle, #ededec)', borderRadius: '12px', background: 'var(--c-bg-elevated, #fff)', boxShadow: '0 2px 12px rgba(0,0,0,.10)', cursor: 'pointer', fontSize: '20px', outline: 'none', zIndex: 30 }}
+        hoverStyle={{ background: 'var(--c-bg-muted, #f0eff2)', boxShadow: '0 4px 16px rgba(0,0,0,.14)' }}
+      >
+        {darkMode ? '☀️' : '🌙'}
+      </Hover>
 
       {/* HIDDEN PDF RENDER TARGET — natural size, no CSS transform, used by html2canvas */}
       <div
@@ -897,7 +934,7 @@ function triggerDownload(blob: Blob, name: string) {
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} style={{ fontSize: '12.5px', fontWeight: 500, color: active ? '#37352f' : '#9b9a97', background: active ? '#fff' : 'transparent', border: 'none', borderRadius: '5px', padding: '5px 13px', cursor: 'pointer' }}>
+    <button onClick={onClick} style={{ fontSize: '12.5px', fontWeight: 500, color: active ? 'var(--c-text-dim, #37352f)' : 'var(--c-text-muted, #9b9a97)', background: active ? 'var(--c-bg, #fff)' : 'transparent', border: 'none', borderRadius: '5px', padding: '5px 13px', cursor: 'pointer' }}>
       {children}
     </button>
   )
@@ -911,9 +948,9 @@ function MobileTabBtn({ active, onClick, children }: { active: boolean; onClick:
         flex: 1,
         fontSize: '14px',
         fontWeight: 600,
-        color: active ? '#37352f' : '#9b9a97',
-        background: active ? '#fff' : '#f5f5f5',
-        border: `1.5px solid ${active ? '#d8d6e8' : '#e8e8ec'}`,
+        color: active ? 'var(--c-text-dim, #37352f)' : 'var(--c-text-muted, #9b9a97)',
+        background: active ? 'var(--c-mobile-tab-active, #fff)' : 'var(--c-mobile-tab-inactive, #f5f5f5)',
+        border: `1.5px solid ${active ? 'var(--c-mobile-tab-active-border, #d8d6e8)' : 'var(--c-mobile-tab-inactive-border, #e8e8ec)'}`,
         borderRadius: '8px',
         padding: '9px 0',
         cursor: 'pointer',

@@ -84,12 +84,12 @@ function DateRange({
             value={end}
             onChange={e => onEnd(e.target.value)}
             disabled={present}
-            style={{ ...inputStyle, fontSize: '14.5px', background: present ? '#f3f3f5' : '#fff' }}
+            style={{ ...inputStyle, fontSize: '14.5px', background: present ? 'var(--c-disabled-bg, #f3f3f5)' : 'var(--c-bg, #fff)' }}
           />
         </div>
       </div>
       {onPresent !== undefined && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: '9px', margin: '0 0 14px', cursor: 'pointer', fontSize: '14px', color: '#3c3c44' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '9px', margin: '0 0 14px', cursor: 'pointer', fontSize: '14px', color: 'var(--c-text, #3c3c44)' }}>
           <input
             type="checkbox"
             checked={!!present}
@@ -166,7 +166,7 @@ export function ExperienceCard({
               top: '50%',
               transform: 'translateY(-50%)',
               pointerEvents: 'none',
-              color: '#9b9a97',
+              color: 'var(--c-text-muted, #9b9a97)',
               fontSize: '11px',
             }}
           >
@@ -277,7 +277,7 @@ export function EducationCard({
 
   const detailRow = (label: string, value: string, placeholder: string, onValue: (v: string) => void, onRemove?: () => void) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '0 0 12px' }}>
-      <span style={{ width: '140px', flex: 'none', fontSize: '13.5px', color: '#6b6a65' }}>{label}</span>
+      <span style={{ width: '140px', flex: 'none', fontSize: '13.5px', color: 'var(--c-text-subtle, #6b6a65)' }}>{label}</span>
       <input
         className="dc-input"
         value={value}
@@ -289,8 +289,8 @@ export function EducationCard({
         <Hover
           as="button"
           onClick={onRemove}
-          style={{ flex: 'none', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e4e4e9', borderRadius: '7px', background: '#fff', cursor: 'pointer', fontSize: '14px', color: '#b3b1ab' }}
-          hoverStyle={{ background: '#fbecec', borderColor: '#e8b4b0', color: '#c0492f' }}
+          style={{ flex: 'none', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--c-border, #e4e4e9)', borderRadius: '7px', background: 'var(--c-bg, #fff)', cursor: 'pointer', fontSize: '14px', color: 'var(--c-text-muted, #b3b1ab)' }}
+          hoverStyle={{ background: 'var(--c-remove-hover-bg, #fbecec)', borderColor: 'var(--c-remove-hover-border, #e8b4b0)', color: 'var(--c-remove-hover-text, #c0492f)' }}
         >×</Hover>
       )}
     </div>
@@ -319,16 +319,16 @@ export function EducationCard({
           <Hover
             as="button"
             onClick={() => setMenuOpen(o => !o)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: '#f3f2fc', border: '1px solid #ddd9f5', borderRadius: '8px', padding: '7px 12px', cursor: 'pointer' }}
-            hoverStyle={{ background: '#ebe9fb' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: 'var(--c-accent-tint, #f3f2fc)', border: '1px solid var(--c-accent-tint-border, #ddd9f5)', borderRadius: '8px', padding: '7px 12px', cursor: 'pointer' }}
+            hoverStyle={{ background: 'var(--c-accent-tint-hover, #ebe9fb)' }}
           >+ Add detail <span style={{ fontSize: '10px' }}>▼</span></Hover>
           {menuOpen && (
             <>
               <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 18 }} />
-              <div style={{ position: 'absolute', top: '38px', left: 0, minWidth: '200px', background: '#fff', border: '1px solid #e6e5e1', borderRadius: '10px', boxShadow: '0 8px 28px rgba(0,0,0,.13)', padding: '5px', zIndex: 20 }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.04em', color: '#9b9a97', padding: '7px 9px 5px' }}>ADD A DETAIL</div>
+              <div style={{ position: 'absolute', top: '38px', left: 0, minWidth: '200px', background: 'var(--c-bg-elevated, #fff)', border: '1px solid var(--c-border, #e6e5e1)', borderRadius: '10px', boxShadow: '0 8px 28px rgba(0,0,0,.13)', padding: '5px', zIndex: 20 }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.04em', color: 'var(--c-text-muted, #9b9a97)', padding: '7px 9px 5px' }}>ADD A DETAIL</div>
                 {availableOptions.map(opt => (
-                  <Hover key={opt} onClick={() => addDetail(opt)} style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: '13.5px', color: '#2c2c34', background: 'transparent', border: 'none', borderRadius: '7px', padding: '8px 9px', cursor: 'pointer' }} hoverStyle={{ background: '#f3f2fc' }}>
+                  <Hover key={opt} onClick={() => addDetail(opt)} style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: '13.5px', color: 'var(--c-text, #2c2c34)', background: 'transparent', border: 'none', borderRadius: '7px', padding: '8px 9px', cursor: 'pointer' }} hoverStyle={{ background: 'var(--c-accent-tint, #f3f2fc)' }}>
                     {opt}
                   </Hover>
                 ))}
@@ -393,8 +393,8 @@ export function SkillCard({
             alignItems: 'center',
             width: '100%',
             boxSizing: 'border-box',
-            background: '#fff',
-            border: '1px solid #e4e4e9',
+            background: 'var(--c-bg, #fff)',
+            border: '1px solid var(--c-border, #e4e4e9)',
             borderRadius: '8px',
             padding: '8px 10px',
             minHeight: '44px',
@@ -407,9 +407,9 @@ export function SkillCard({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: '#f3f2fc',
-                color: '#4b41c9',
-                border: '1px solid #ddd9f5',
+                background: 'var(--c-accent-tint, #f3f2fc)',
+                color: 'var(--c-tag-text, #4b41c9)',
+                border: '1px solid var(--c-accent-tint-border, #ddd9f5)',
                 borderRadius: '6px',
                 padding: '4px 5px 4px 9px',
                 fontSize: '13px',
@@ -428,10 +428,10 @@ export function SkillCard({
                   height: '16px',
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  color: '#9b93e6',
+                  color: 'var(--c-tag-remove, #9b93e6)',
                   fontSize: '13px',
                 }}
-                hoverStyle={{ background: '#e3dffa', color: '#4b41c9' }}
+                hoverStyle={{ background: 'var(--c-tag-remove-hover, #e3dffa)', color: 'var(--c-tag-text, #4b41c9)' }}
               >
                 ×
               </Hover>
@@ -449,7 +449,7 @@ export function SkillCard({
               outline: 'none',
               background: 'transparent',
               fontSize: '14px',
-              color: '#2c2c34',
+              color: 'var(--c-text, #2c2c34)',
               padding: '3px 2px',
             }}
           />
