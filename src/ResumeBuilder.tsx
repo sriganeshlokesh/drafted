@@ -4,6 +4,9 @@ import { EducationCard, ExperienceCard, ProjectCard, SkillCard, type DragBundle 
 import { expDates, fmtMonth, genTex } from './tex'
 import { addBtn, addBtnHover, checkBadge, inputStyle, inputWithCheck, labelStyle, sectionHeading } from './styles'
 import { RichTextEditor } from './RichTextEditor'
+import { normalizeResumeData } from './normalize'
+import { ImportModal, UploadIcon } from './ImportModal'
+import { importResume } from './resumeImport'
 import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
 
 interface Props {
@@ -23,6 +26,9 @@ interface State extends ResumeData {
   scale: number
   paperH: number
   mobilePane: 'edit' | 'preview'
+  importOpen: boolean
+  importing: boolean
+  importError: string | null
 }
 
 const SAVE_KEY = 'latexResumeBuilder:v1'
@@ -47,6 +53,9 @@ const initialState: State = {
   scale: 1,
   paperH: 1056,
   mobilePane: 'edit',
+  importOpen: false,
+  importing: false,
+  importError: null,
   firstName: '',
   lastName: '',
   email: '',
@@ -239,6 +248,44 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   }
   const download = () => runDownload(state.format)
 
+  const runImport = async (file: File) => {
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if (!['pdf', 'txt', 'tex', 'md', 'markdown'].includes(ext)) {
+      patch({ importError: 'Unsupported file — use a PDF, .txt, .tex, or .md file.' })
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      patch({ importError: 'That file is too large (max 10 MB).' })
+      return
+    }
+    patch({ importing: true, importError: null })
+    try {
+      const { data, ok } = await importResume(file)
+      if (!ok) {
+        patch({
+          importing: false,
+          importError: "We couldn't read enough from this file. If it's a scanned PDF, try a text-based PDF or a .txt file.",
+        })
+        return
+      }
+      // Replace résumé content with the parsed data (job-target fields + UI kept).
+      setState((s) => ({
+        ...s,
+        firstName: '', lastName: '', email: '', linkedin: '', phone: '', location: '',
+        docTitle: initialState.docTitle, summary: '',
+        experience: [], projects: [], education: [],
+        ...data,
+        skillGroups: (data.skillGroups ?? []).map((g) => ({ ...g, draft: '' })),
+        step: 0,
+        importOpen: false,
+        importing: false,
+        importError: null,
+      }) as State)
+    } catch {
+      patch({ importing: false, importError: 'Something went wrong reading that file. Please try another.' })
+    }
+  }
+
   // ── Persistence (auto-save) ────────────────────────────────────────────
   const lastSnap = useRef<string | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -256,37 +303,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       if (raw) {
         const d = JSON.parse(raw)
         if (d && typeof d === 'object') {
-          if (d.summary && !d.summary.includes('<')) d.summary = `<p>${d.summary}</p>`
-          if (Array.isArray(d.experience)) {
-            d.experience = d.experience.map((x: Record<string, unknown>) => ({
-              ...x,
-              bulletsText: x.bulletsText && !(x.bulletsText as string).includes('<')
-                ? `<ul>${(x.bulletsText as string).split('\n').filter((l: string) => l.trim()).map((l: string) => `<li>${l.trim()}</li>`).join('')}</ul>`
-                : (x.bulletsText || ''),
-            }))
-          }
-          if (Array.isArray(d.education)) {
-            d.education = d.education.map((x: Record<string, unknown>) => {
-              const start = typeof x.start === 'string' && /^\d{4}-\d{2}$/.test(x.start) ? x.start + '-01' : x.start
-              const end = typeof x.end === 'string' && /^\d{4}-\d{2}$/.test(x.end) ? x.end + '-01' : x.end
-              let extraDetails = Array.isArray(x.extraDetails) ? x.extraDetails : []
-              // Migrate old gpa/detail fields into extraDetails
-              const oldGpa = typeof x.gpa === 'string' && x.gpa ? x.gpa : (typeof x.detail === 'string' ? x.detail.replace(/^GPA:\s*/i, '').trim() : '')
-              if (oldGpa && !extraDetails.some((e: {label:string}) => e.label === 'GPA')) {
-                extraDetails = [{ label: 'GPA', value: oldGpa }, ...extraDetails]
-              }
-              return { ...x, start, end, extraDetails }
-            })
-          }
-          if (Array.isArray(d.projects)) {
-            d.projects = d.projects.map((x: Record<string, unknown>) => ({
-              ...x,
-              description: x.description && !(x.description as string).includes('<')
-                ? `<p>${x.description}</p>`
-                : (x.description || ''),
-            }))
-          }
-          setState((s) => ({ ...s, ...d }))
+          const norm = normalizeResumeData(d)
+          setState((s) => ({ ...s, ...norm }) as State)
           lastSnap.current = raw
           return
         }
@@ -541,6 +559,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
+          <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: '#efedfb', border: '1px solid #ddd8f7', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: '#e6e2fb', borderColor: '#c9c1f2' }}>
+            <UploadIcon />{!isMobile && 'Import'}
+          </Hover>
           <Hover as="button" onClick={() => patch({ resetDialogOpen: true })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: '#6b6a72', background: '#f0eff2', border: '1px solid #d5d4d8', borderRadius: '8px', cursor: 'pointer' }} hoverStyle={{ background: '#e5e4e8', borderColor: '#bbb' }}>
             <span>↺</span>{!isMobile && ' Reset'}
           </Hover>
@@ -795,6 +816,14 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           <span style={{ color: 'var(--accent2,#f5871f)', fontSize: '15px' }}>✓</span> {fileName}.{ext} downloaded
         </div>
       )}
+
+      <ImportModal
+        open={s.importOpen}
+        importing={s.importing}
+        error={s.importError}
+        onFile={runImport}
+        onClose={() => patch({ importOpen: false, importError: null })}
+      />
 
       {/* RESET CONFIRMATION DIALOG */}
       {s.resetDialogOpen && (
