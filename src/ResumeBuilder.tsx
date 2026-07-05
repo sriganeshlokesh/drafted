@@ -90,7 +90,6 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   })
   const scrollRef = useRef<HTMLDivElement>(null)
   const paperRef = useRef<HTMLDivElement>(null)
-  const pdfRenderRef = useRef<HTMLDivElement>(null)
 
   const pageH = paperSize === 'A4' ? 1123 : 1056
   const pageW = paperSize === 'A4' ? 794 : 816
@@ -223,31 +222,10 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
         const blob = await genDocx(state, paperSize)
         triggerDownload(blob, name)
       } else {
-        // PDF: render the live resume HTML to canvas then slice into pages
-        const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-          import('html2canvas'),
-          import('jspdf'),
-        ])
-        await document.fonts.ready
-        const canvas = await html2canvas(pdfRenderRef.current!, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' })
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: paperSize === 'A4' ? 'a4' : 'letter' })
-        const pdfW = pdf.internal.pageSize.getWidth()
-        const pdfH = pdf.internal.pageSize.getHeight()
-        const scl = 2
-        const ph = pageH * scl
-        const pageCount = Math.max(1, Math.ceil(canvas.height / ph))
-        const slice = document.createElement('canvas')
-        slice.width = canvas.width
-        slice.height = ph
-        const ctx = slice.getContext('2d')!
-        for (let i = 0; i < pageCount; i++) {
-          if (i > 0) pdf.addPage()
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(0, 0, slice.width, slice.height)
-          ctx.drawImage(canvas, 0, -i * ph)
-          pdf.addImage(slice.toDataURL('image/jpeg', 0.93), 'JPEG', 0, 0, pdfW, pdfH)
-        }
-        pdf.save(name)
+        // PDF: real vector text via @react-pdf/renderer (crisp + re-importable)
+        const { generateResumePdfBlob } = await import('./resumePdf')
+        const blob = await generateResumePdfBlob(state, paperSize)
+        triggerDownload(blob, name)
       }
       patch({ compiling: false, toast: true })
       t2.current = setTimeout(() => patch({ toast: false }), 3000)
@@ -485,7 +463,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       {hasSummary && (
         <div>
           <div style={sectionHeading}>Summary</div>
-          <div className="resume-summary" dangerouslySetInnerHTML={{ __html: s.summary }} style={{ fontSize: '13px', lineHeight: 1.55, color: '#161616', textAlign: 'justify' }} />
+          <div className="resume-summary" dangerouslySetInnerHTML={{ __html: s.summary }} style={{ fontSize: '13px', lineHeight: 1.48, color: '#161616', textAlign: 'justify' }} />
         </div>
       )}
 
@@ -501,7 +479,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 </span>
                 <span style={{ fontStyle: 'italic', fontSize: '12.5px', color: '#222', whiteSpace: 'nowrap' }}>{expDates(it)}</span>
               </div>
-              <div className="resume-bullets" dangerouslySetInnerHTML={{ __html: it.bulletsText }} style={{ fontSize: '12.7px', lineHeight: 1.5, color: '#1a1a1a', textAlign: 'justify' }} />
+              <div className="resume-bullets" dangerouslySetInnerHTML={{ __html: it.bulletsText }} style={{ fontSize: '12.7px', lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify' }} />
             </div>
           ))}
         </div>
@@ -516,7 +494,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 <span style={{ fontWeight: 700, fontSize: '13.5px', color: '#111' }}>{it.name}</span>
                 <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: '11px', color: '#2b5fb3' }}>{it.link}</span>
               </div>
-              <div className="resume-summary" dangerouslySetInnerHTML={{ __html: it.description }} style={{ fontSize: '12.7px', lineHeight: 1.5, color: '#1a1a1a', textAlign: 'justify', margin: '2px 0 0' }} />
+              <div className="resume-summary" dangerouslySetInnerHTML={{ __html: it.description }} style={{ fontSize: '12.7px', lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify', margin: '2px 0 0' }} />
             </div>
           ))}
         </div>
@@ -546,7 +524,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
         <div>
           <div style={sectionHeading}>Skills</div>
           {skillLines.map((g, i) => (
-            <p key={i} style={{ fontSize: '12.7px', lineHeight: 1.55, color: '#161616', margin: '0 0 2px' }}>
+            <p key={i} style={{ fontSize: '12.7px', lineHeight: 1.48, color: '#161616', margin: '0 0 1px' }}>
               <span style={{ fontWeight: 700 }}>{g.label}</span>: {g.items}
             </p>
           ))}
@@ -883,25 +861,6 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       >
         {darkMode ? '☀️' : '🌙'}
       </Hover>
-
-      {/* HIDDEN PDF RENDER TARGET — natural size, no CSS transform, used by html2canvas */}
-      <div
-        ref={pdfRenderRef}
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          left: '-9999px',
-          top: 0,
-          width: `${pageW}px`,
-          background: '#fff',
-          fontFamily: "'Computer Modern Serif',Georgia,serif",
-          padding: '48px 62px',
-          boxSizing: 'border-box',
-          pointerEvents: 'none',
-        }}
-      >
-        {resumeBody}
-      </div>
     </div>
   )
 }

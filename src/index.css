@@ -155,16 +155,16 @@ button:disabled { opacity: .35; cursor: default; }
 }
 
 /* Resume preview experience bullets rendered HTML */
-.resume-bullets ul { margin: 2px 0 0; padding-left: 18px; }
-.resume-bullets li { margin: 0 0 2px; }
+.resume-bullets ul { margin: 1px 0 0; padding-left: 18px; }
+.resume-bullets li { margin: 0 0 1px; }
 .resume-bullets li:last-child { margin-bottom: 0; }
 .resume-bullets p { margin: 0; }
 
 /* Resume preview summary rendered HTML */
-.resume-summary p { margin: 0 0 3px; }
+.resume-summary p { margin: 0 0 2px; }
 .resume-summary p:last-child { margin-bottom: 0; }
 .resume-summary ul { margin: 0; padding-left: 18px; }
-.resume-summary li { margin: 0 0 2px; }
+.resume-summary li { margin: 0 0 1px; }
 .resume-summary li:last-child { margin-bottom: 0; }
 
 /* Tiptap rich-text editor content area */
