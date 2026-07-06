@@ -134,6 +134,13 @@ const BULLET = /^\s*(?:[•▪◦·‣]\s*|[-*]\s+)/
 const URL = /(?:https?:\/\/)?(?:www\.)?(?:github\.com|gitlab\.com|[\w-]+\.[a-z]{2,})(?:\/[^\s|,)]*)?/i
 const dedupe = (a: string[]) => [...new Set(a.map((s) => s.trim()).filter(Boolean))]
 
+/** Append a soft-wrapped continuation line to the previous bullet, de-hyphenating a word
+ *  broken across the wrap (mirrors `dehyphenate` in textNormalize.ts). */
+function joinWrap(prev: string, next: string): string {
+  if (/[A-Za-z]{2,}-$/.test(prev) && /^[a-z]{2,}/.test(next)) return prev.slice(0, -1) + next
+  return `${prev} ${next}`
+}
+
 /** Feature-scored contact fields (OpenResume-style weights for the name). */
 function parseContact(lines: Line[]): Partial<ResumeData> {
   const out: Partial<ResumeData> = {}
@@ -264,12 +271,25 @@ function parseExperience(lines: Line[]): Experience[] {
     }
     if (isBullet) {
       const b = t.replace(BULLET, '').trim()
-      if (b) bullets.push(b)
+      if (b) {
+        // A bulleted line whose text starts lowercase is almost always a wrapped
+        // continuation of the previous bullet that got its own marker (e.g. a résumé
+        // re-exported from already-fragmented bullets), not a new bullet — real résumé
+        // bullets start with a capitalized action verb.
+        if (bullets.length > 0 && /^[a-z]/.test(b) && !/[.!?]$/.test(bullets[bullets.length - 1])) {
+          bullets[bullets.length - 1] = joinWrap(bullets[bullets.length - 1], b)
+        } else {
+          bullets.push(b)
+        }
+      }
       pending = []
       continue
     }
     if (cur && bullets.length > 0) {
-      bullets.push(t)
+      // A marker-less, normal-gap line after a bullet is a soft-wrap continuation, not a
+      // new bullet — new entries were already split off above (date / bold / big-gap).
+      // Mirrors parseProjects' description handling.
+      bullets[bullets.length - 1] = joinWrap(bullets[bullets.length - 1], t)
     } else if (cur && (!cur.role || !cur.company)) {
       assignRoleCompany(cur, t)
     } else {
@@ -298,7 +318,9 @@ function parseEducation(lines: Line[]): Education[] {
     const t = line.text.trim()
     if (!t) continue
     const bigGap = line.gapBefore > typicalGap * 1.4 && line.gapBefore < 900
-    if (!cur || (SCHOOL.test(t) && cur.school) || (bigGap && (cur.school || cur.degree))) cur = newEntry()
+    // New entry on a second school OR a second degree line (résumés list either first),
+    // as well as on a big vertical gap.
+    if (!cur || (SCHOOL.test(t) && cur.school) || (DEGREE.test(t) && cur.degree) || (bigGap && (cur.school || cur.degree))) cur = newEntry()
     if (SCHOOL.test(t) && !cur.school) cur.school = stripExtras(t)
     else if (DEGREE.test(t) && !cur.degree) cur.degree = stripExtras(t)
     const dr = parseDateRange(t)

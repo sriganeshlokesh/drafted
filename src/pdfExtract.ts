@@ -135,7 +135,9 @@ export function reconstructLines(items: RawItem[]): Line[] {
       }
       text += it.str
     }
-    text = normalizeText(text).replace(/\s+/g, ' ').trim()
+    // Collapse a stray space after an "approximately" tilde (incl. the combining/small
+    // tilde variants CMU fonts emit) so "~ 20K" → "~20K".
+    text = normalizeText(text).replace(/\s+/g, ' ').replace(/[~˜̃∼]\s*(?=[\d$])/g, '~').trim()
     if (!text) continue
     const y = Math.max(...sorted.map((i) => i.y))
     lines.push({

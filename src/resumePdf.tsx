@@ -132,7 +132,7 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
         wrap
       >
         {/* Header */}
-        <Text style={{ textAlign: 'center', fontSize: 17.5 * fz, fontWeight: 'bold', color: '#0d0d0d', textTransform: 'uppercase', letterSpacing: 1 }}>{full}</Text>
+        <Text style={{ textAlign: 'center', fontSize: 17.5 * fz, fontWeight: 'bold', color: '#0d0d0d', letterSpacing: 0.3 }}>{full}</Text>
         <ContactLine data={data} fz={fz} />
 
         {/* Summary */}

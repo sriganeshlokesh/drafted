@@ -209,4 +209,51 @@ describe('parseResumeLines — style signals (PDF)', () => {
     expect(data.skillGroups).toHaveLength(1)
     expect(data.skillGroups![0].label).toBe('Languages')
   })
+
+  it('joins soft-wrapped bullet continuations into one bullet', () => {
+    const data = parseResumeLines([
+      L('Experience'),
+      L('Senior Software Engineer — Acme Corp', { bold: true, gapBefore: 4 }),
+      L('• Led a team, scaling to 13M MAUs', { x: 40 }),
+      L('at 20K peak QPS under 60ms', { x: 52 }), // continuation, no marker
+      L('• Architected microservices processing 200M events', { x: 40 }),
+      L('with idempotent handling and graceful degradation', { x: 52 }),
+    ])
+    const bullets = data.experience![0].bulletsText.split('\n')
+    expect(bullets).toHaveLength(2)
+    expect(bullets[0]).toBe('Led a team, scaling to 13M MAUs at 20K peak QPS under 60ms')
+    expect(bullets[1]).toContain('graceful degradation')
+  })
+
+  it('re-merges lowercase-leading marker fragments (re-exported fragmented résumé)', () => {
+    const data = parseResumeLines([
+      L('Experience'),
+      L('Software Engineer — Acme', { bold: true, gapBefore: 4 }),
+      L('• Led a real-time platform scaling to 13M', { x: 34 }),
+      L('• at 20K QPS growing revenue to $30M', { x: 34 }), // own marker + lowercase → continuation
+      L('• Architected microservices with graceful', { x: 34 }),
+      L('• degradation and regional deployments', { x: 34 }), // own marker + lowercase → continuation
+    ])
+    const bullets = data.experience![0].bulletsText.split('\n')
+    expect(bullets).toHaveLength(2)
+    expect(bullets[0]).toBe('Led a real-time platform scaling to 13M at 20K QPS growing revenue to $30M')
+    expect(bullets[1]).toBe('Architected microservices with graceful degradation and regional deployments')
+  })
+
+  it('parses degree-first education entries (a second degree line starts a new entry)', () => {
+    const data = parseResumeLines([
+      L('Education'),
+      L('Master of Science, Computer Science    Aug 2019 – May 2021'),
+      L('University of North Carolina at Charlotte GPA: 4.0'),
+      L('Bachelor of Science, Information Science    Aug 2015 – May 2019'),
+      L('SJB Institute of Technology GPA: 3.6'),
+    ])
+    expect(data.education).toHaveLength(2)
+    expect(data.education![0].degree).toContain('Master of Science')
+    expect(data.education![0].school).toContain('University of North Carolina')
+    expect(data.education![1].degree).toContain('Bachelor of Science')
+    expect(data.education![1].school).toContain('SJB Institute of Technology')
+    expect(data.education![1].start).toBe('2015-08-01')
+    expect(data.education![1].end).toBe('2019-05-01')
+  })
 })
