@@ -119,7 +119,7 @@ function DatedHeader({ left, right, fz }: { left: ReactNode; right: string; fz: 
 
 // ── Document ─────────────────────────────────────────────────────────────────
 
-function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: PaperSize }) {
+export function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: PaperSize }) {
   const fz = clampFontScale(data.fontScale ?? 1)
   const full = [data.firstName, data.lastName].filter(Boolean).join(' ')
   const skillLines = data.skillGroups.filter((g) => (g.items || []).length)

@@ -24,7 +24,7 @@ const BASE: ResumeData = {
       bulletsText: '<ul><li>Built systems</li><li>Scaled them</li></ul>',
     },
   ],
-  projects: [{ name: 'MyApp', link: 'github.com/myapp', description: '<p>A cool app.</p>' }],
+  projects: [{ name: 'MyApp', link: 'github.com/myapp', description: '<p>A cool app.</p>', techStack: [], techStackDraft: '' }],
   education: [
     {
       school: 'State University',

@@ -243,7 +243,7 @@ describe('genTex — Experience section', () => {
 })
 
 describe('genTex — Projects section', () => {
-  const PROJ = { name: 'MyApp', link: 'github.com/myapp', description: '' }
+  const PROJ = { name: 'MyApp', link: 'github.com/myapp', description: '', techStack: [], techStackDraft: '' }
 
   it('omits Projects section when list is empty', () => {
     expect(genTex(BASE, 'Letter')).not.toContain('\\section*{Projects}')

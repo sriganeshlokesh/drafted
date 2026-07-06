@@ -1,12 +1,14 @@
-import { useLayoutEffect, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { usePDF } from '@react-pdf/renderer'
 import { Hover } from './Hover'
 import { EducationCard, ExperienceCard, ProjectCard, SkillCard, type DragBundle } from './cards'
-import { expDates, fmtMonth, genTex } from './tex'
-import { addBtn, addBtnHover, checkBadge, inputStyle, inputWithCheck, labelStyle, sectionHeading } from './styles'
+import { genTex } from './tex'
+import { addBtn, addBtnHover, checkBadge, inputStyle, inputWithCheck, labelStyle } from './styles'
 import { RichTextEditor } from './RichTextEditor'
 import { normalizeResumeData } from './normalize'
 import { ImportModal, UploadIcon } from './ImportModal'
 import { importResume } from './resumeImport'
+import { ResumePdfDocument } from './resumePdf'
 import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
 import { FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, clampFontScale } from './fontScale'
 
@@ -22,10 +24,6 @@ interface State extends ResumeData {
   menuOpen: boolean
   resetDialogOpen: boolean
   saveState: SaveState
-  pages: number
-  currentPage: number
-  scale: number
-  paperH: number
   mobilePane: 'edit' | 'preview'
   importOpen: boolean
   importing: boolean
@@ -50,10 +48,6 @@ const initialState: State = {
   menuOpen: false,
   resetDialogOpen: false,
   saveState: 'saved',
-  pages: 1,
-  currentPage: 1,
-  scale: 1,
-  paperH: 1056,
   mobilePane: 'edit',
   importOpen: false,
   importing: false,
@@ -75,7 +69,6 @@ const initialState: State = {
 }
 
 const slug = (t: string) => (t || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-const stripProto = (s: string) => (s || '').replace(/^https?:\/\/(www\.)?/, '')
 
 const DARK_KEY = 'drafted:darkMode'
 
@@ -91,8 +84,6 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     return next
   })
   const scrollRef = useRef<HTMLDivElement>(null)
-  const paperRef = useRef<HTMLDivElement>(null)
-
   const pageH = paperSize === 'A4' ? 1123 : 1056
   const pageW = paperSize === 'A4' ? 794 : 816
 
@@ -363,48 +354,22 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
-  // ── Measure paper → page count + fit scale ─────────────────────────────
-  const measure = () => {
-    const el = paperRef.current
-    const sc = scrollRef.current
-    if (!el) return
-    const h = el.offsetHeight
-    const pages = Math.max(1, Math.ceil((h - 4) / pageH))
-    let scale = state.scale
-    if (sc) {
-      const avail = sc.clientWidth - 60
-      scale = Math.max(0.2, avail / pageW)
-    }
-    const upd: Partial<State> = {}
-    if (pages !== state.pages) upd.pages = pages
-    if (Math.abs(h - state.paperH) > 1) upd.paperH = h
-    if (Math.abs(scale - state.scale) > 0.004) upd.scale = scale
-    if (Object.keys(upd).length) patch(upd)
-  }
-  useLayoutEffect(measure)
   useEffect(() => {
-    const onResize = () => {
-      measure()
-      setIsMobile(window.innerWidth < 768)
-    }
+    const onResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', onResize)
-    let ro: ResizeObserver | undefined
-    if (window.ResizeObserver && scrollRef.current) {
-      ro = new ResizeObserver(() => measure())
-      ro.observe(scrollRef.current)
-    }
-    return () => {
-      window.removeEventListener('resize', onResize)
-      ro?.disconnect()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => window.removeEventListener('resize', onResize)
   }, [])
-  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const ph = (pageH + 22) * state.scale
-    const top = e.currentTarget.scrollTop
-    const cur = Math.min(state.pages, Math.max(1, Math.floor(top / ph) + 1))
-    if (cur !== state.currentPage) patch({ currentPage: cur })
-  }
+
+  // ── PDF preview via usePDF — debounced 300ms to avoid regenerating every keystroke ──
+  const [pdfState, updatePdf] = usePDF({
+    document: <ResumePdfDocument data={state} paperSize={paperSize} />,
+  })
+  useEffect(() => {
+    const t = setTimeout(() => {
+      updatePdf(<ResumePdfDocument data={state} paperSize={paperSize} />)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [state, paperSize])
 
   // ── Derived values ─────────────────────────────────────────────────────
   const s = state
@@ -423,7 +388,6 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     { skillGroups: [] },
   ]
 
-  const fullName = [s.firstName, s.lastName].filter(Boolean).join(' ')
   const user = slug(`${s.firstName} ${s.lastName}`) || 'resume'
   const fileName = [user, slug(s.targetCompany), slug(s.targetRole)].filter(Boolean).join('_')
   const ext = FORMATS[s.format]
@@ -442,16 +406,6 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   const completeBg = complete ? 'rgba(245,135,31,.12)' : 'var(--c-accent-tint, #efeefb)'
   const completeBorder = complete ? 'rgba(245,135,31,.38)' : 'var(--c-accent-tint-border, rgba(91,80,224,.22))'
   const ringBg = `conic-gradient(${completeColor} ${completePct * 3.6}deg, var(--c-ring-track, #e4e3ee) 0)`
-
-  const contactRaw = [
-    { text: s.email, link: true },
-    { text: s.location, link: false },
-    { text: stripProto(s.linkedin), link: true },
-    { text: s.phone, link: false },
-  ].filter((p) => p.text && p.text.trim())
-
-  const skillLines = s.skillGroups.filter((g) => g.items.length).map((g) => ({ label: g.label, items: g.items.join(' · ') }))
-  const hasSummary = !!s.summary.replace(/<[^>]*>/g, '').trim()
 
   const formatOptions: [Format, string, string][] = [
     ['PDF', 'PDF document', '.pdf'],
@@ -474,100 +428,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
   const focus = 'dc-input'
 
-  // Font-size (A− / A+) multiplier — scales every résumé text size below; the
-  // page auto-fit (s.scale) is separate. Repagination follows via measure().
   const fz = clampFontScale(s.fontScale ?? 1)
-  const fs = (px: number) => `${+(px * fz).toFixed(2)}px`
   const setFontScale = (next: number) => patch({ fontScale: clampFontScale(+next.toFixed(2)) })
-
-  // Full résumé body — rendered inside every page sheet, offset per page.
-  const resumeBody = (
-    <>
-      <div style={{ textAlign: 'center', margin: '0 0 3px' }}>
-        <span style={{ fontSize: fs(29), fontWeight: 700, color: '#0d0d0d', letterSpacing: '.01em' }}>{fullName}</span>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'baseline', fontSize: fs(12.5), color: '#222', margin: '0 0 2px' }}>
-        {contactRaw.map((c, i) => (
-          <span key={i} style={{ display: 'contents' }}>
-            {i > 0 && <span style={{ color: '#555', margin: '0 7px' }}>|</span>}
-            <span style={{ color: c.link ? '#2b5fb3' : '#222' }}>{c.text}</span>
-          </span>
-        ))}
-      </div>
-
-      {hasSummary && (
-        <div>
-          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Summary</div>
-          <div className="resume-summary" dangerouslySetInnerHTML={{ __html: s.summary }} style={{ fontSize: fs(13), lineHeight: 1.48, color: '#161616', textAlign: 'justify' }} />
-        </div>
-      )}
-
-      {s.experience.length > 0 && (
-        <div>
-          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Experience</div>
-          {s.experience.map((it, i) => (
-            <div key={i} style={{ margin: '0 0 7px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontSize: fs(13.5), color: '#111' }}>
-                  <span style={{ fontWeight: 700 }}>{it.role}</span>
-                  {`, ${it.company || ''}`}
-                </span>
-                <span style={{ fontStyle: 'italic', fontSize: fs(12.5), color: '#222', whiteSpace: 'nowrap' }}>{expDates(it)}</span>
-              </div>
-              <div className="resume-bullets" dangerouslySetInnerHTML={{ __html: it.bulletsText }} style={{ fontSize: fs(12.7), lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify' }} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {s.projects.length > 0 && (
-        <div>
-          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Projects</div>
-          {s.projects.map((it, i) => (
-            <div key={i} style={{ margin: '0 0 6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontWeight: 700, fontSize: fs(13.5), color: '#111' }}>{it.name}</span>
-                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: fs(11), color: '#2b5fb3' }}>{it.link}</span>
-              </div>
-              {it.techStack?.length ? <div style={{ fontStyle: 'italic', fontSize: fs(12), color: '#555', margin: '1px 0 0' }}>{it.techStack.join(', ')}</div> : null}
-              <div className="resume-summary" dangerouslySetInnerHTML={{ __html: it.description }} style={{ fontSize: fs(12.7), lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify', margin: '2px 0 0' }} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {s.education.length > 0 && (
-        <div>
-          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Education</div>
-          {s.education.map((it, i) => (
-            <div key={i} style={{ margin: '0 0 5px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontWeight: 700, fontSize: fs(13.5), color: '#111' }}>{it.degree}</span>
-                <span style={{ fontStyle: 'italic', fontSize: fs(12.5), color: '#222', whiteSpace: 'nowrap' }}>{[fmtMonth(it.start), fmtMonth(it.end)].filter(Boolean).join(' – ')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ fontSize: fs(13), color: '#222' }}>{it.school}</span>
-                <span style={{ fontSize: fs(12.5), color: '#333', whiteSpace: 'nowrap' }}>
-                  {it.extraDetails.filter(d => d.value).map(d => `${d.label}: ${d.value}`).join(' · ')}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {skillLines.length > 0 && (
-        <div>
-          <div style={{ ...sectionHeading, fontSize: fs(14) }}>Skills</div>
-          {skillLines.map((g, i) => (
-            <p key={i} style={{ fontSize: fs(12.7), lineHeight: 1.48, color: '#161616', margin: '0 0 1px' }}>
-              <span style={{ fontWeight: 700 }}>{g.label}</span>: {g.items}
-            </p>
-          ))}
-        </div>
-      )}
-    </>
-  )
 
   return (
     <div style={rootStyle} data-theme={darkMode ? 'dark' : undefined}>
@@ -805,8 +667,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
         {/* PREVIEW PANE */}
         <section style={{ flex: 1, display: isMobile && s.mobilePane === 'edit' ? 'none' : 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--c-bg-muted, #f0eff2)', position: 'relative' }}>
-          <div style={{ flex: 'none', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid var(--c-border-subtle, #e2e1e4)', background: 'var(--c-preview-toolbar-bg, #faf9fb)' }}>
-            <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-page-counter-bg, #e8e7ec)', borderRadius: '20px', padding: '3px 10px' }}>Page {s.currentPage} of {s.pages}</span>
+          <div style={{ flex: 'none', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 18px', borderBottom: '1px solid var(--c-border-subtle, #e2e1e4)', background: 'var(--c-preview-toolbar-bg, #faf9fb)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <FontSizeControl scale={fz} onChange={setFontScale} />
               <div style={{ display: 'flex', gap: '2px', background: 'var(--c-preview-tab-bg, #e4e3e8)', borderRadius: '7px', padding: '2px' }}>
@@ -816,44 +677,48 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
             </div>
           </div>
 
-          <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: 'auto', padding: '34px 30px 70px', display: 'flex', justifyContent: 'center', alignItems: s.view === 'preview' && isEmpty ? 'center' : 'flex-start' }}>
+          <div ref={scrollRef} style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
             {s.view === 'preview' && isEmpty ? (
-              <div style={{ width: '100%', maxWidth: 560, padding: '80px 40px', background: 'var(--c-bg, #fff)', border: '2px dashed var(--c-accent-tint-border, #d0cfe8)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
-                <div style={{ position: 'relative', width: 90, height: 110 }}>
-                  <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
-                    <rect x="4" y="4" width="68" height="88" rx="8" fill="#eeedf5"/>
-                    <rect x="18" y="32" width="42" height="7" rx="3" fill="#c5c3d8"/>
-                    <rect x="18" y="48" width="30" height="7" rx="3" fill="#c5c3d8"/>
-                  </svg>
-                  <div style={{ position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 22, lineHeight: '1' }}>+</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 700, color: 'var(--c-text, #2a2a2a)', fontFamily: 'ui-sans-serif,sans-serif' }}>Your résumé starts here</p>
-                  <p style={{ margin: 0, fontSize: 15, color: 'var(--c-text-muted, #888)', lineHeight: 1.6, maxWidth: 340, fontFamily: 'ui-sans-serif,sans-serif' }}>Fill in the form on the left and your typeset résumé will appear on this page as you go.</p>
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+                <div style={{ width: '100%', maxWidth: 560, padding: '80px 40px', background: 'var(--c-bg, #fff)', border: '2px dashed var(--c-accent-tint-border, #d0cfe8)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+                  <div style={{ position: 'relative', width: 90, height: 110 }}>
+                    <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
+                      <rect x="4" y="4" width="68" height="88" rx="8" fill="#eeedf5"/>
+                      <rect x="18" y="32" width="42" height="7" rx="3" fill="#c5c3d8"/>
+                      <rect x="18" y="48" width="30" height="7" rx="3" fill="#c5c3d8"/>
+                    </svg>
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 22, lineHeight: '1' }}>+</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 700, color: 'var(--c-text, #2a2a2a)', fontFamily: 'ui-sans-serif,sans-serif' }}>Your résumé starts here</p>
+                    <p style={{ margin: 0, fontSize: 15, color: 'var(--c-text-muted, #888)', lineHeight: 1.6, maxWidth: 340, fontFamily: 'ui-sans-serif,sans-serif' }}>Fill in the form on the left and your typeset résumé will appear on this page as you go.</p>
+                  </div>
                 </div>
               </div>
             ) : s.view === 'preview' ? (
-              <div style={{ width: `${pageW * s.scale}px`, height: `${(s.pages * pageH + (s.pages - 1) * 22) * s.scale}px`, flex: 'none' }}>
-                <div style={{ transform: `scale(${s.scale})`, transformOrigin: 'top left', display: 'flex', flexDirection: 'column', gap: '22px' }}>
-                  {Array.from({ length: s.pages }, (_, i) => (
-                    <div key={i} style={{ width: 'var(--page-w,816px)', height: 'var(--page-h,1056px)', flex: 'none', overflow: 'hidden', position: 'relative', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.07),0 10px 34px rgba(0,0,0,.10)', borderRadius: '2px' }}>
-                      <span style={{ position: 'absolute', top: '13px', right: '16px', zIndex: 2, fontFamily: 'ui-sans-serif,sans-serif', fontSize: '9.5px', letterSpacing: '.06em', color: '#c2c2c8' }}>PAGE {i + 1}</span>
-                      <div ref={i === 0 ? paperRef : undefined} style={{ position: 'absolute', left: 0, right: 0, top: `${-(i * pageH)}px`, padding: '48px 62px 48px', boxSizing: 'border-box', fontFamily: "'Computer Modern Serif',Georgia,serif" }}>
-                        {resumeBody}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <>
+                <iframe
+                  src={pdfState.url ? `${pdfState.url}#toolbar=0&zoom=page-fit` : undefined}
+                  style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                  title="Resume preview"
+                />
+                {pdfState.loading && (
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(240,239,242,.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+                    <span style={{ fontSize: '13px', color: 'var(--c-text-subtle,#888)', fontFamily: 'ui-sans-serif,sans-serif' }}>Updating…</span>
+                  </div>
+                )}
+              </>
             ) : (
-              <div style={{ width: 'var(--page-w,816px)', maxWidth: '100%', flex: 'none', background: '#1f1e1b', boxShadow: '0 8px 30px rgba(0,0,0,.18)', borderRadius: '8px', padding: '22px 24px', minHeight: '600px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '0 0 14px' }}>
-                  <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#ec6a5e', display: 'inline-block' }} />
-                  <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#f4bf4f', display: 'inline-block' }} />
-                  <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#61c554', display: 'inline-block' }} />
-                  <span style={{ marginLeft: '8px', fontSize: '11.5px', fontFamily: "'IBM Plex Mono',monospace", color: '#8a877f' }}>{fileName}.tex</span>
+              <div style={{ height: '100%', overflowY: 'auto', padding: '34px 30px 70px', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: 'var(--page-w,816px)', maxWidth: '100%', flex: 'none', background: '#1f1e1b', boxShadow: '0 8px 30px rgba(0,0,0,.18)', borderRadius: '8px', padding: '22px 24px', minHeight: '600px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '0 0 14px' }}>
+                    <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#ec6a5e', display: 'inline-block' }} />
+                    <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#f4bf4f', display: 'inline-block' }} />
+                    <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#61c554', display: 'inline-block' }} />
+                    <span style={{ marginLeft: '8px', fontSize: '11.5px', fontFamily: "'IBM Plex Mono',monospace", color: '#8a877f' }}>{fileName}.tex</span>
+                  </div>
+                  <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", fontSize: '12px', lineHeight: 1.6, color: '#d7d3c8', margin: 0 }}>{genTex(s, paperSize)}</pre>
                 </div>
-                <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", fontSize: '12px', lineHeight: 1.6, color: '#d7d3c8', margin: 0 }}>{genTex(s, paperSize)}</pre>
               </div>
             )}
           </div>
