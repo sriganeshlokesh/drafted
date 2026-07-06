@@ -75,6 +75,7 @@ const DARK_KEY = 'drafted:darkMode'
 export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f', paperSize = 'A4' }: Props) {
   const [state, setState] = useState<State>(initialState)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [dropActive, setDropActive] = useState(false)
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try { return localStorage.getItem(DARK_KEY) === 'true' } catch { return false }
   })
@@ -292,6 +293,21 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     } catch {
       patch({ importing: false, importError: 'Something went wrong reading that file. Please try another.' })
     }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDropActive(true)
+  }
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropActive(false)
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDropActive(false)
+    const file = e.dataTransfer.files[0]
+    if (file) runImport(file)
   }
 
   // ── Persistence (auto-save) ────────────────────────────────────────────
@@ -679,9 +695,14 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
           <div ref={scrollRef} style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
             {s.view === 'preview' && isEmpty ? (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
-                <div style={{ width: '100%', maxWidth: 560, padding: '80px 40px', background: 'var(--c-bg, #fff)', border: '2px dashed var(--c-accent-tint-border, #d0cfe8)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
-                  <div style={{ position: 'relative', width: 90, height: 110 }}>
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  style={{ width: '100%', maxWidth: 560, background: dropActive ? 'var(--c-accent-tint, #efeefb)' : 'var(--c-bg, #fff)', border: `2px dashed ${dropActive ? 'var(--accent, #5b50e0)' : 'var(--c-accent-tint-border, #d0cfe8)'}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '80px 40px', transition: 'border-color .15s, background .15s' }}
+                >
+                  <div style={{ position: 'relative', width: 90, height: 110, flexShrink: 0 }}>
                     <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
                       <rect x="4" y="4" width="68" height="88" rx="8" fill="#eeedf5"/>
                       <rect x="18" y="32" width="42" height="7" rx="3" fill="#c5c3d8"/>
@@ -689,10 +710,16 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                     </svg>
                     <div style={{ position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 22, lineHeight: '1' }}>+</div>
                   </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 700, color: 'var(--c-text, #2a2a2a)', fontFamily: 'ui-sans-serif,sans-serif' }}>Your résumé starts here</p>
-                    <p style={{ margin: 0, fontSize: 15, color: 'var(--c-text-muted, #888)', lineHeight: 1.6, maxWidth: 340, fontFamily: 'ui-sans-serif,sans-serif' }}>Fill in the form on the left and your typeset résumé will appear on this page as you go.</p>
-                  </div>
+                  <p style={{ margin: 0, fontSize: 17, fontWeight: 400, color: dropActive ? 'var(--accent,#5b50e0)' : 'var(--c-text-dim, #37352f)', fontFamily: 'ui-sans-serif,sans-serif', transition: 'color .15s' }}>
+                    {dropActive ? 'Drop to import' : 'or drop your file here'}
+                  </p>
+                  <button
+                    onClick={() => patch({ importOpen: true, importError: null })}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', fontSize: '14px', fontWeight: 600, color: '#fff', background: 'var(--accent,#5b50e0)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'ui-sans-serif,sans-serif' }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                    Upload your file
+                  </button>
                 </div>
               </div>
             ) : s.view === 'preview' ? (
