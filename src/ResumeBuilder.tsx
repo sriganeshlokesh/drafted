@@ -31,11 +31,12 @@ interface State extends ResumeData {
 }
 
 const SAVE_KEY = 'latexResumeBuilder:v1'
+const FONT_SCALE_KEY = 'drafted:fontScale'
 const FORMATS: Record<Format, string> = { PDF: 'pdf', LaTeX: 'tex', Word: 'docx' }
 const PERSIST_FIELDS: (keyof ResumeData)[] = [
   'firstName', 'lastName', 'email', 'linkedin', 'phone', 'location', 'targetCompany',
   'targetRole', 'docTitle', 'summary', 'experience', 'projects', 'education', 'skillGroups',
-  'step', 'view', 'format', 'fontScale',
+  'step', 'view', 'format',
 ]
 
 const initialState: State = {
@@ -76,6 +77,12 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   const [state, setState] = useState<State>(initialState)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [dropActive, setDropActive] = useState(false)
+  const [fontScaleState, setFontScaleState] = useState<number>(() => {
+    try {
+      const v = parseFloat(localStorage.getItem(FONT_SCALE_KEY) ?? '')
+      return isNaN(v) ? 1 : clampFontScale(v)
+    } catch { return 1 }
+  })
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try { return localStorage.getItem(DARK_KEY) === 'true' } catch { return false }
   })
@@ -236,16 +243,16 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       const fn = [userSlug, slug(state.targetCompany), slug(state.targetRole)].filter(Boolean).join('_')
       const name = `${fn}.${FORMATS[fmt]}`
       if (fmt === 'LaTeX') {
-        const blob = new Blob([genTex(state, paperSize)], { type: 'text/plain' })
+        const blob = new Blob([genTex({ ...state, fontScale: fontScaleState }, paperSize)], { type: 'text/plain' })
         triggerDownload(blob, name)
       } else if (fmt === 'Word') {
         const { genDocx } = await import('./docx')
-        const blob = await genDocx(state, paperSize)
+        const blob = await genDocx({ ...state, fontScale: fontScaleState }, paperSize)
         triggerDownload(blob, name)
       } else {
         // PDF: real vector text via @react-pdf/renderer (crisp + re-importable)
         const { generateResumePdfBlob } = await import('./resumePdf')
-        const blob = await generateResumePdfBlob(state, paperSize)
+        const blob = await generateResumePdfBlob({ ...state, fontScale: fontScaleState }, paperSize)
         triggerDownload(blob, name)
       }
       patch({ compiling: false, toast: true })
@@ -378,14 +385,14 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
   // ── PDF preview via usePDF — debounced 300ms to avoid regenerating every keystroke ──
   const [pdfState, updatePdf] = usePDF({
-    document: <ResumePdfDocument data={state} paperSize={paperSize} />,
+    document: <ResumePdfDocument data={{ ...state, fontScale: fontScaleState }} paperSize={paperSize} />,
   })
   useEffect(() => {
     const t = setTimeout(() => {
-      updatePdf(<ResumePdfDocument data={state} paperSize={paperSize} />)
+      updatePdf(<ResumePdfDocument data={{ ...state, fontScale: fontScaleState }} paperSize={paperSize} />)
     }, 300)
     return () => clearTimeout(t)
-  }, [state, paperSize])
+  }, [state, paperSize, fontScaleState])
 
   // ── Derived values ─────────────────────────────────────────────────────
   const s = state
@@ -444,8 +451,12 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
   const focus = 'dc-input'
 
-  const fz = clampFontScale(s.fontScale ?? 1)
-  const setFontScale = (next: number) => patch({ fontScale: clampFontScale(+next.toFixed(2)) })
+  const fz = fontScaleState
+  const setFontScale = (next: number) => {
+    const clamped = clampFontScale(+next.toFixed(2))
+    setFontScaleState(clamped)
+    try { localStorage.setItem(FONT_SCALE_KEY, String(clamped)) } catch {}
+  }
 
   return (
     <div style={rootStyle} data-theme={darkMode ? 'dark' : undefined}>
@@ -744,7 +755,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                     <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#61c554', display: 'inline-block' }} />
                     <span style={{ marginLeft: '8px', fontSize: '11.5px', fontFamily: "'IBM Plex Mono',monospace", color: '#8a877f' }}>{fileName}.tex</span>
                   </div>
-                  <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", fontSize: '12px', lineHeight: 1.6, color: '#d7d3c8', margin: 0 }}>{genTex(s, paperSize)}</pre>
+                  <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", fontSize: '12px', lineHeight: 1.6, color: '#d7d3c8', margin: 0 }}>{genTex({ ...s, fontScale: fontScaleState }, paperSize)}</pre>
                 </div>
               </div>
             )}
