@@ -59,10 +59,15 @@ export function normalizeResumeData(input: Record<string, unknown>): Partial<Res
   if (Array.isArray(d.projects)) {
     d.projects = d.projects.map((x: Record<string, unknown>) => ({
       ...x,
-      description:
-        typeof x.description === 'string' && x.description && !x.description.includes('<')
-          ? `<p>${x.description}</p>`
-          : x.description || '',
+      description: (() => {
+        if (typeof x.description !== 'string' || !x.description || x.description.includes('<'))
+          return x.description || ''
+        const lines = x.description.split('\n').map((l) => l.trim()).filter(Boolean)
+        if (lines.length <= 1) return `<p>${x.description.trim()}</p>`
+        return `<ul>${lines.map((l) => `<li>${/[.!?;:]$/.test(l) ? l : l + '.'}</li>`).join('')}</ul>`
+      })(),
+      techStack: Array.isArray(x.techStack) ? x.techStack : [],
+      techStackDraft: typeof x.techStackDraft === 'string' ? x.techStackDraft : '',
     }))
   }
 

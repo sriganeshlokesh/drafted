@@ -200,12 +200,26 @@ export function ProjectCard({
   update,
   remove,
   drag,
+  onCommitTech,
+  onRemoveTech,
+  onBackspaceTech,
 }: {
   item: Project
   update: <K extends keyof Project>(field: K, value: Project[K]) => void
   remove: () => void
   drag: DragBundle
+  onCommitTech: () => void
+  onRemoveTech: (j: number) => void
+  onBackspaceTech: () => void
 }) {
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      onCommitTech()
+    } else if (e.key === 'Backspace' && !(e.target as HTMLInputElement).value) {
+      onBackspaceTech()
+    }
+  }
   return (
     <div {...drag.cardProps} style={entryCard}>
       {drag.isOver && <div style={insertionLine} />}
@@ -231,6 +245,78 @@ export function ProjectCard({
       <div style={{ margin: '0 0 12px' }}>
         <label style={labelStyle}>Description</label>
         <RichTextEditor value={item.description} onChange={v => update('description', v)} />
+      </div>
+      <div style={{ margin: '0 0 12px' }}>
+        <label style={labelStyle}>Tech stack · type and press Enter</label>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '7px',
+            alignItems: 'center',
+            width: '100%',
+            boxSizing: 'border-box',
+            background: 'var(--c-bg, #fff)',
+            border: '1px solid var(--c-border, #e4e4e9)',
+            borderRadius: '8px',
+            padding: '8px 10px',
+            minHeight: '44px',
+          }}
+        >
+          {(item.techStack || []).map((t, j) => (
+            <span
+              key={j}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'var(--c-accent-tint, #f3f2fc)',
+                color: 'var(--c-tag-text, #4b41c9)',
+                border: '1px solid var(--c-accent-tint-border, #ddd9f5)',
+                borderRadius: '6px',
+                padding: '4px 5px 4px 9px',
+                fontSize: '13px',
+                fontWeight: 500,
+              }}
+            >
+              {t}
+              <Hover
+                as="span"
+                onClick={() => onRemoveTech(j)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  color: 'var(--c-tag-remove, #9b93e6)',
+                  fontSize: '13px',
+                }}
+                hoverStyle={{ background: 'var(--c-tag-remove-hover, #e3dffa)', color: 'var(--c-tag-text, #4b41c9)' }}
+              >
+                ×
+              </Hover>
+            </span>
+          ))}
+          <input
+            value={item.techStackDraft || ''}
+            onChange={(e) => update('techStackDraft', e.target.value)}
+            onKeyDown={onKey}
+            placeholder="Add a technology…"
+            style={{
+              flex: 1,
+              minWidth: '120px',
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              fontSize: '14px',
+              color: 'var(--c-text, #2c2c34)',
+              padding: '3px 2px',
+            }}
+          />
+        </div>
       </div>
       <Hover as="button" onClick={remove} style={removeBtn} hoverStyle={removeBtnHover}>
         Remove

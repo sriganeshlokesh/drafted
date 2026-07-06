@@ -173,6 +173,7 @@ export async function genDocx(s: ResumeData, _paperSize: PaperSize): Promise<Blo
         [new TextRun({ text: x.name, bold: true, font: FONT, size: SZ })],
         x.link || '',
       ))
+      if (x.techStack?.length) children.push(new Paragraph({ children: [new TextRun({ text: x.techStack.join(', '), font: FONT, size: SZ, italics: true })], spacing: { after: 60 } }))
       if (x.description) children.push(...htmlToBodyParagraphs(x.description))
     }
   }

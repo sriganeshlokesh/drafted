@@ -169,6 +169,7 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
                   <Text style={{ flex: 1, paddingRight: 8, fontSize: 12 * fz, fontWeight: 'bold' }}>{x.name}</Text>
                   {x.link ? <Text style={{ fontFamily: 'CMU Typewriter', fontSize: 10.5 * fz, color: LINK }}>{x.link}</Text> : null}
                 </View>
+                {x.techStack?.length ? <Text style={{ fontSize: 10 * fz, fontStyle: 'italic', color: '#555', marginBottom: 2 }}>{x.techStack.join(', ')}</Text> : null}
                 {richBlocks(x.description)}
               </View>
             ))}

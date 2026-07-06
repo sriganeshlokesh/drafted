@@ -354,14 +354,23 @@ function parseEducation(lines: Line[]): Education[] {
 }
 
 function parseProjects(lines: Line[]): Project[] {
+  const gaps = lines.map((l) => l.gapBefore).filter((g) => g > 0 && g < 900)
+  const typicalGap = Math.max(8, gaps.length ? median(gaps) : 12)
+  // Comma-separated short items with no sentence structure → likely a tech stack line
+  const looksLikeTechStack = (s: string): boolean => {
+    const parts = s.replace(/[.!?]$/, '').split(/,\s*/)
+    return parts.length >= 2 && parts.every((p) => p.trim().split(/\s+/).length <= 4 && p.trim().length > 0)
+  }
   const projects: Project[] = []
   let cur: Project | null = null
+  let lastLineEnded = false
   for (const line of lines) {
     const t = line.text.trim()
     if (!t) continue
     const isBullet = BULLET.test(line.text)
-    if (!isBullet && (!cur || line.gapBefore >= 2 || line.bold)) {
-      cur = { name: '', link: '', description: '' }
+    if (!isBullet && (!cur || line.gapBefore > typicalGap * 1.1 || (line.bold && /^[A-Z\d"'(]/.test(t)))) {
+      cur = { name: '', link: '', description: '', techStack: [], techStackDraft: '' }
+      lastLineEnded = false
       const link = t.match(URL)
       const isLink = !!link && /\/|github|gitlab|\.(io|com|dev|app|org|net)\b/i.test(link[0])
       if (isLink) cur.link = link![0].replace(/^https?:\/\//, '')
@@ -372,7 +381,19 @@ function parseProjects(lines: Line[]): Project[] {
       projects.push(cur)
     } else if (cur) {
       const d = t.replace(BULLET, '').trim()
-      if (d) cur.description = cur.description ? `${cur.description} ${d}` : d
+      if (d) {
+        // First content line that looks like comma-separated tech items → tech stack
+        if (!cur.description && !cur.techStack?.length && !isBullet && looksLikeTechStack(d)) {
+          cur.techStack = splitItems(d.replace(/[.!?]$/, ''))
+        } else {
+          // Only start a new bullet at sentence boundaries; word-wraps join with space
+          const isNewBullet = isBullet || (lastLineEnded && /^[A-Z]/.test(d))
+          cur.description = cur.description
+            ? (isNewBullet ? `${cur.description}\n${d}` : `${cur.description} ${d}`)
+            : d
+          lastLineEnded = /[.!?]$/.test(d)
+        }
+      }
     }
   }
   return projects.filter((p) => p.name)

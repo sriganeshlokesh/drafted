@@ -17,6 +17,8 @@ export interface Project {
   name: string
   link: string
   description: string
+  techStack: string[]
+  techStackDraft: string
 }
 
 export interface EducationDetail {

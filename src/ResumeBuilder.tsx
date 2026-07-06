@@ -126,6 +126,33 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     })
   }
 
+  // Project tech stack operations
+  const commitProjectTech = (i: number) =>
+    setState((s) => {
+      const a = s.projects.slice()
+      const p = { ...a[i] }
+      const parts = (p.techStackDraft || '').split(',').map((x) => x.trim()).filter(Boolean)
+      if (parts.length) p.techStack = [...(p.techStack || []), ...parts]
+      p.techStackDraft = ''
+      a[i] = p
+      return { ...s, projects: a }
+    })
+  const removeProjectTech = (i: number, j: number) =>
+    setState((s) => {
+      const a = s.projects.slice()
+      const p = { ...a[i], techStack: (a[i].techStack || []).slice() }
+      p.techStack.splice(j, 1)
+      a[i] = p
+      return { ...s, projects: a }
+    })
+  const backspaceProjectTech = (i: number) =>
+    setState((s) => {
+      const a = s.projects.slice()
+      if (!(a[i].techStack || []).length) return s
+      a[i] = { ...a[i], techStack: a[i].techStack.slice(0, -1) }
+      return { ...s, projects: a }
+    })
+
   // Skill tag operations
   const commitTag = (i: number) =>
     setState((s) => {
@@ -502,6 +529,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 <span style={{ fontWeight: 700, fontSize: fs(13.5), color: '#111' }}>{it.name}</span>
                 <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: fs(11), color: '#2b5fb3' }}>{it.link}</span>
               </div>
+              {it.techStack?.length ? <div style={{ fontStyle: 'italic', fontSize: fs(12), color: '#555', margin: '1px 0 0' }}>{it.techStack.join(', ')}</div> : null}
               <div className="resume-summary" dangerouslySetInnerHTML={{ __html: it.description }} style={{ fontSize: fs(12.7), lineHeight: 1.45, color: '#1a1a1a', textAlign: 'justify', margin: '2px 0 0' }} />
             </div>
           ))}
@@ -738,9 +766,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
             {s.step === 2 && (
               <div>
                 {s.projects.map((it, i) => (
-                  <ProjectCard key={i} item={it} drag={makeDrag('projects', i)} remove={() => removeItem('projects', i)} update={(f, v) => setItemField('projects', i, f as string, v)} />
+                  <ProjectCard key={i} item={it} drag={makeDrag('projects', i)} remove={() => removeItem('projects', i)} update={(f, v) => setItemField('projects', i, f as string, v)} onCommitTech={() => commitProjectTech(i)} onRemoveTech={(j) => removeProjectTech(i, j)} onBackspaceTech={() => backspaceProjectTech(i)} />
                 ))}
-                <Hover as="button" onClick={() => addItem('projects', { name: '', link: '', description: '' })} style={addBtn} hoverStyle={addBtnHover}>+ Add project</Hover>
+                <Hover as="button" onClick={() => addItem('projects', { name: '', link: '', description: '', techStack: [], techStackDraft: '' })} style={addBtn} hoverStyle={addBtnHover}>+ Add project</Hover>
               </div>
             )}
 

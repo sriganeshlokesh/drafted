@@ -88,6 +88,7 @@ export function genTex(s: ResumeData, paperSize: PaperSize): string {
     L.push('\\section*{Projects}')
     s.projects.forEach((x) => {
       L.push('\\noindent\\textbf{' + e(x.name) + '} \\hfill \\texttt{' + e(x.link) + '} \\\\')
+      if (x.techStack?.length) L.push('\\textit{' + e(x.techStack.join(', ')) + '} \\\\')
       if (x.description) L.push(htmlToTex(x.description))
       L.push('')
     })
