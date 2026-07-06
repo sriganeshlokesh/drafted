@@ -31,7 +31,7 @@ export function normalizeResumeData(input: Record<string, unknown>): Partial<Res
           ? `<ul>${x.bulletsText
               .split('\n')
               .filter((l) => l.trim())
-              .map((l) => `<li>${l.trim()}</li>`)
+              .map((l) => { const t = l.trim(); return `<li>${/[.!?;:]$/.test(t) ? t : t + '.'}</li>`; })
               .join('')}</ul>`
           : x.bulletsText || '',
     }))

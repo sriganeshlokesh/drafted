@@ -150,7 +150,7 @@ function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paperSize: P
             {data.experience.map((x: Experience, i) => (
               <View key={i} style={{ marginBottom: 6 }}>
                 <DatedHeader fz={fz}
-                  left={<><Text style={{ fontWeight: 'bold' }}>{x.role}</Text>{x.company ? `, ${x.company}` : ''}</>}
+                  left={<><Text style={{ fontWeight: 'bold' }}>{x.role}</Text>{x.company ? ` | ${x.company}` : ''}</>}
                   right={expDates(x)}
                 />
                 {richBlocks(x.bulletsText)}

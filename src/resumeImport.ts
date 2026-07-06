@@ -208,6 +208,23 @@ function assignRoleCompany(e: Experience, text: string): void {
   }
   const sep = t.split(/\s*[|–—]\s*|\s+[-]\s+/).map((x) => x.trim()).filter(Boolean)
   if (sep.length >= 2) {
+    // If the part after the separator starts with a Roman numeral/number level suffix
+    // (e.g. "I Fetch Rewards Inc" from "Senior Engineer - I Fetch Rewards Inc"),
+    // re-attach the suffix to the role and use the remainder as company.
+    const levelPrefix = /^(I{1,3}|IV|V|VI{0,3}|IX|X|\d+)\s+(.+)$/i
+    const levelOnly = /^(I{1,3}|IV|V|VI{0,3}|IX|X|\d+)$/i
+    if (sep.length === 2) {
+      const lm = sep[1].match(levelPrefix)
+      if (lm) {
+        e.role ||= sep[0] + ' - ' + lm[1]
+        e.company ||= lm[2].trim()
+        return
+      }
+    } else if (sep.length >= 3 && levelOnly.test(sep[1])) {
+      e.role ||= sep[0] + ' - ' + sep[1]
+      e.company ||= sep.slice(2).join(' ')
+      return
+    }
     e.role ||= sep[0]
     e.company ||= sep.slice(1).join(' ')
     return

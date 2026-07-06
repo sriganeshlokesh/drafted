@@ -78,7 +78,7 @@ export function genTex(s: ResumeData, paperSize: PaperSize): string {
   if (s.experience.length) {
     L.push('\\section*{Experience}')
     s.experience.forEach((x) => {
-      L.push('\\noindent\\textbf{' + e(x.role) + '}, ' + e(x.company) + ' \\hfill \\textit{' + e(expDates(x)) + '}')
+      L.push('\\noindent\\textbf{' + e(x.role) + '} \\textbar{} ' + e(x.company) + ' \\hfill \\textit{' + e(expDates(x)) + '}')
       const bulletsLatex = htmlToTex(x.bulletsText || '')
       if (bulletsLatex) L.push(bulletsLatex)
       L.push('')

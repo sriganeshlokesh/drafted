@@ -136,7 +136,7 @@ describe('normalizeResumeData', () => {
       education: [{ start: '2020-05', end: '2021-06', gpa: '3.5' }],
     })
     expect(out.summary).toBe('<p>Hello</p>')
-    expect(out.experience![0].bulletsText).toBe('<ul><li>a</li><li>b</li></ul>')
+    expect(out.experience![0].bulletsText).toBe('<ul><li>a.</li><li>b.</li></ul>')
     expect(out.projects![0].description).toBe('<p>d</p>')
     expect(out.education![0].start).toBe('2020-05-01')
     expect(out.education![0].end).toBe('2021-06-01')
@@ -156,7 +156,7 @@ describe('importResume — guard', () => {
     expect(data.firstName).toBe('Jane')
     // normalized on the way out
     expect(data.summary).toBe('<p>Full-stack engineer with 6 years building web apps.</p>')
-    expect(data.experience![0].bulletsText).toContain('<li>Led migration to React</li>')
+    expect(data.experience![0].bulletsText).toContain('<li>Led migration to React.</li>')
   })
   it('reports not-ok for an empty / unreadable file (guards against wiping the form)', async () => {
     const file = new File(['   \n  \n'], 'empty.txt', { type: 'text/plain' })

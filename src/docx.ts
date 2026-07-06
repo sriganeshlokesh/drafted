@@ -157,7 +157,7 @@ export async function genDocx(s: ResumeData, _paperSize: PaperSize): Promise<Blo
       const dateStr = expDates(x)
       const leftRuns: TextRun[] = [
         new TextRun({ text: x.role, bold: true, font: FONT, size: SZ }),
-        ...(x.company ? [new TextRun({ text: `, ${x.company}`, font: FONT, size: SZ })] : []),
+        ...(x.company ? [new TextRun({ text: ` | ${x.company}`, font: FONT, size: SZ })] : []),
       ]
       children.push(headerLine(leftRuns, dateStr))
       children.push(...htmlToBodyParagraphs(x.bulletsText || ''))
