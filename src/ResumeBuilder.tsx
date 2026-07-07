@@ -8,6 +8,7 @@ import { RichTextEditor } from './RichTextEditor'
 import { normalizeResumeData } from './normalize'
 import { ImportModal, UploadIcon } from './ImportModal'
 import { importResume } from './resumeImport'
+import { hasResumeContent } from './resumeContent'
 import { ResumePdfDocument } from './resumePdf'
 import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
 import { FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, clampFontScale } from './fontScale'
@@ -423,6 +424,7 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
   const completePct = Math.round((checks.filter(Boolean).length / checks.length) * 100)
   const isEmpty = completePct === 0
   const complete = completePct === 100
+  const hasContent = hasResumeContent(s)
   const completeColor = complete ? 'var(--accent2)' : 'var(--accent)'
   const completeBg = complete ? 'rgba(137,49,114,.12)' : 'var(--c-accent-tint, #efeaf3)'
   const completeBorder = complete ? 'rgba(137,49,114,.38)' : 'var(--c-accent-tint-border, rgba(33,56,133,.22))'
@@ -784,6 +786,8 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
         open={s.importOpen}
         importing={s.importing}
         error={s.importError}
+        darkMode={darkMode}
+        hasContent={hasContent}
         onFile={runImport}
         onClose={() => patch({ importOpen: false, importError: null })}
       />
