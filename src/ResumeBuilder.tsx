@@ -13,8 +13,6 @@ import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
 import { FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, clampFontScale } from './fontScale'
 
 interface Props {
-  accent?: string
-  accent2?: string
   paperSize?: PaperSize
 }
 
@@ -73,7 +71,7 @@ const slug = (t: string) => (t || '').toLowerCase().trim().replace(/[^a-z0-9]+/g
 
 const DARK_KEY = 'drafted:darkMode'
 
-export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f', paperSize = 'A4' }: Props) {
+export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
   const [state, setState] = useState<State>(initialState)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [dropActive, setDropActive] = useState(false)
@@ -425,9 +423,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
   const completePct = Math.round((checks.filter(Boolean).length / checks.length) * 100)
   const isEmpty = completePct === 0
   const complete = completePct === 100
-  const completeColor = complete ? accent2 : darkMode ? '#c4bcf8' : accent
-  const completeBg = complete ? 'rgba(245,135,31,.12)' : 'var(--c-accent-tint, #efeefb)'
-  const completeBorder = complete ? 'rgba(245,135,31,.38)' : 'var(--c-accent-tint-border, rgba(91,80,224,.22))'
+  const completeColor = complete ? 'var(--accent2)' : 'var(--accent)'
+  const completeBg = complete ? 'rgba(137,49,114,.12)' : 'var(--c-accent-tint, #efeaf3)'
+  const completeBorder = complete ? 'rgba(137,49,114,.38)' : 'var(--c-accent-tint-border, rgba(33,56,133,.22))'
   const ringBg = `conic-gradient(${completeColor} ${completePct * 3.6}deg, var(--c-ring-track, #e4e3ee) 0)`
 
   const formatOptions: [Format, string, string][] = [
@@ -442,9 +440,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
     flexDirection: 'column',
     height: '100vh',
     background: 'var(--c-bg, #fff)',
-    color: 'var(--c-text, #2c2c34)',
-    '--accent': accent,
-    '--accent2': accent2,
+    color: 'var(--c-text, #1a1a2e)',
     '--page-w': `${pageW}px`,
     '--page-h': `${pageH}px`,
   } as CSSProperties
@@ -466,7 +462,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           <img src="/logo.svg" alt="Drafted" style={{ width: '34px', height: '34px', display: 'block' }} />
           <span title="Résumé completeness" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: completeBg, border: `1px solid ${completeBorder}`, borderRadius: '20px', padding: '3px 11px 3px 4px' }}>
             {complete ? (
-              <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: accent2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px' }}>✓</span>
+              <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'var(--accent2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px' }}>✓</span>
             ) : (
               <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: ringBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--c-accent-tint, #efeefb)', display: 'block' }} />
@@ -487,11 +483,11 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           </Hover>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
-          <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}>
+          <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#213885)', background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}>
             <UploadIcon />{!isMobile && 'Import'}
           </Hover>
           <div style={{ position: 'relative' }}>
-            <Hover as="button" onClick={() => patch({ resetDialogOpen: !s.resetDialogOpen })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '15px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px solid var(--c-reset-border, #d5d4d8)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)', borderColor: 'var(--c-reset-border, #bbb)' }}>
+            <Hover as="button" onClick={() => patch({ resetDialogOpen: !s.resetDialogOpen })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px solid var(--c-reset-border, #d5d4d8)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)', borderColor: 'var(--c-reset-border, #bbb)' }}>
               <span>↺</span>{!isMobile && ' Reset'}
             </Hover>
             {s.resetDialogOpen && (
@@ -519,15 +515,15 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
             {s.saveState === 'saving' ? (
               <span style={{ width: '11px', height: '11px', border: '2px solid var(--c-border, #d8d6e8)', borderTopColor: 'var(--c-text-muted, #9b9a97)', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
             ) : (
-              <><span style={{ color: accent2 }}>✓</span>{!isMobile && ' Saved'}</>
+              <><span style={{ color: 'var(--accent2)' }}>✓</span>{!isMobile && ' Saved'}</>
             )}
           </span>
           <div style={{ position: 'relative' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'stretch', background: 'var(--accent,#5b50e0)', borderRadius: '8px', overflow: 'hidden' }}>
-              <Hover as="button" onClick={download} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 10px 7px 14px', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'transparent', border: 'none', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.08)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'stretch', background: 'var(--accent)', borderRadius: '8px', overflow: 'hidden' }}>
+              <Hover as="button" onClick={download} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 10px 7px 14px', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'transparent', border: 'none', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.12)' }}>
                 <span style={{ fontSize: '13px' }}>↓</span> Download
               </Hover>
-              <Hover as="button" onClick={() => patch({ menuOpen: !s.menuOpen })} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 10px', background: 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,.22)', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.08)' }}>
+              <Hover as="button" onClick={() => patch({ menuOpen: !s.menuOpen })} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 10px', background: 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,.22)', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.12)' }}>
                 {!isMobile && <span style={{ fontSize: '12px', fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,.22)', borderRadius: '5px', padding: '2px 7px', letterSpacing: '.01em' }}>.{ext}</span>}
                 <span style={{ fontSize: '9px', color: 'rgba(255,255,255,.8)' }}>▼</span>
               </Hover>
@@ -543,9 +539,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                       <Hover key={key} onClick={() => runDownload(key)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', background: active ? 'var(--c-accent-tint, #f3f2fc)' : 'transparent' }} hoverStyle={{ background: 'var(--c-accent-tint, #f3f2fc)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--c-text, #2c2c34)' }}>{label}</span>
-                          <span style={{ fontSize: '12px', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: 'var(--c-text-muted, #9b9a97)' }}>{fext}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--c-text-muted, #9b9a97)' }}>{fext}</span>
                         </div>
-                        {active && <span style={{ color: 'var(--accent,#5b50e0)', fontSize: '15px', fontWeight: 600 }}>✓</span>}
+                        {active && <span style={{ color: 'var(--accent,#213885)', fontSize: '15px', fontWeight: 600 }}>✓</span>}
                       </Hover>
                     )
                   })}
@@ -563,9 +559,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           const isPast = i < s.step
           const sectionDone = checks[i]
           const showAlert = isPast && !sectionDone
-          const badgeBg = activeStep ? accent : sectionDone ? 'rgba(245,135,31,.15)' : showAlert ? accent2 : 'var(--c-bg, #fff)'
-          const badgeColor = activeStep ? '#fff' : sectionDone ? accent2 : showAlert ? '#fff' : 'var(--c-text-muted, #b3b1ab)'
-          const badgeBorder = activeStep ? accent : sectionDone || showAlert ? accent2 : 'var(--c-border, #dcdbd6)'
+          const badgeBg = activeStep ? 'var(--accent)' : sectionDone ? 'rgba(137,49,114,.15)' : showAlert ? 'var(--accent2)' : 'var(--c-bg, #fff)'
+          const badgeColor = activeStep ? '#fff' : sectionDone ? 'var(--accent2)' : showAlert ? '#fff' : 'var(--c-text-muted, #b3b1ab)'
+          const badgeBorder = activeStep ? 'var(--accent)' : sectionDone || showAlert ? 'var(--accent2)' : 'var(--c-border, #dcdbd6)'
           const badgeLabel = activeStep ? String(i + 1) : sectionDone ? '✓' : showAlert ? '!' : String(i + 1)
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
@@ -604,9 +600,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
             {/* STEP 0 : PERSONAL INFO */}
             {s.step === 0 && (
               <div>
-                <div style={{ margin: '0 0 16px', padding: '12px 14px 14px', background: 'var(--c-bg-elevated, #f7f7fb)', border: '1px solid var(--c-border, #e8e7f3)', borderRadius: '10px' }}>
+                <div style={{ margin: '0 0 16px', padding: '12px 14px 14px', background: 'var(--c-accent-tint, #efeaf3)', border: '1px solid var(--c-accent-tint-border, #d9cbe4)', borderRadius: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 12px' }}>
-                    <span style={{ flex: 'none', width: '20px', height: '20px', borderRadius: '6px', background: 'rgba(245,135,31,.14)', border: '1px solid rgba(245,135,31,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'var(--accent2,#f5871f)' }}>◎</span>
+                    <span style={{ flex: 'none', width: '20px', height: '20px', borderRadius: '6px', background: 'rgba(137,49,114,.14)', border: '1px solid rgba(137,49,114,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'var(--accent2,#893172)' }}>◎</span>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text, #2c2c34)' }}>Applying for</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '11px' }}>
@@ -620,8 +616,8 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '13px 0 0', fontSize: '12.5px', color: '#9b9a97' }}>
-                    <span style={{ color: 'var(--accent2,#f5871f)' }}>↓</span>
-                    <span style={{ fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: 'var(--c-text-subtle, #6b6a72)' }}>{fileName}.{ext}</span>
+                    <span style={{ color: 'var(--accent2,#893172)' }}>↓</span>
+                    <span style={{ color: 'var(--c-text-subtle, #6b6a72)' }}>{fileName}.{ext}</span>
                   </div>
                 </div>
 
@@ -686,9 +682,9 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
           <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '18px', padding: '13px 24px', borderTop: '1px solid var(--c-border-subtle, #ededec)', background: 'var(--c-bg, #fff)' }}>
             <Hover as="button" onClick={() => patch({ step: Math.max(0, s.step - 1) })} disabled={s.step === 0} style={{ flex: 'none', fontSize: '13.5px', fontWeight: 500, color: s.step === 0 ? 'var(--c-border, #cfcdc7)' : 'var(--c-text-dim, #37352f)', background: 'var(--c-bg, #fff)', border: '1px solid var(--c-border-subtle, #e6e5e1)', borderRadius: '7px', padding: '9px 18px', cursor: s.step === 0 ? 'default' : 'pointer' }} hoverStyle={{ background: 'var(--c-bg-subtle, #f7f6f4)' }}>Prev</Hover>
             <div style={{ flex: 1, height: '7px', borderRadius: '5px', background: 'var(--c-border, #ebebf0)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: 'var(--accent,#5b50e0)', width: `${((s.step + 1) / 5) * 100}%`, borderRadius: '5px', transition: 'width .25s ease' }} />
+              <div style={{ height: '100%', background: 'var(--accent,#213885)', width: `${((s.step + 1) / 5) * 100}%`, borderRadius: '5px', transition: 'width .25s ease' }} />
             </div>
-            <Hover as="button" onClick={isLast ? download : () => patch({ step: Math.min(4, s.step + 1) })} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '13.5px', fontWeight: 600, color: '#fff', background: 'var(--accent,#5b50e0)', border: 'none', borderRadius: '7px', padding: '9px 20px', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.08)' }}>{isLast ? '↓ Download' : 'Next'}</Hover>
+            <Hover as="button" onClick={isLast ? download : () => patch({ step: Math.min(4, s.step + 1) })} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '13.5px', fontWeight: 600, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: '7px', padding: '9px 20px', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.12)' }}>{isLast ? '↓ Download' : 'Next'}</Hover>
           </div>
         </section>
 
@@ -711,26 +707,26 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  style={{ width: '100%', maxWidth: 560, background: dropActive ? 'var(--c-accent-tint, #efeefb)' : 'var(--c-bg, #fff)', border: `2px dashed ${dropActive ? 'var(--accent, #5b50e0)' : 'var(--c-accent-tint-border, #d0cfe8)'}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '80px 40px', transition: 'border-color .15s, background .15s' }}
+                  style={{ width: '100%', maxWidth: 680, background: dropActive ? 'var(--c-accent-tint, #efeefb)' : 'var(--c-bg, #fff)', border: `2px dashed ${dropActive ? 'var(--accent, #213885)' : 'var(--c-accent-tint-border, #d0cfe8)'}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px', padding: '64px 64px', transition: 'border-color .15s, background .15s' }}
                 >
-                  <div style={{ position: 'relative', width: 90, height: 110, flexShrink: 0 }}>
-                    <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
-                      <rect x="4" y="4" width="68" height="88" rx="8" fill="#eeedf5"/>
-                      <rect x="18" y="32" width="42" height="7" rx="3" fill="#c5c3d8"/>
-                      <rect x="18" y="48" width="30" height="7" rx="3" fill="#c5c3d8"/>
-                    </svg>
-                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 22, lineHeight: '1' }}>+</div>
+                  <img src={darkMode ? '/upload-doc-dark.png' : '/upload-doc-light.png'} alt="" width={300} style={{ flexShrink: 0, display: 'block' }} />
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-.01em', color: dropActive ? 'var(--accent,#213885)' : 'var(--c-text-dim, #101a3d)', transition: 'color .15s' }}>
+                      {dropActive ? 'Drop to import' : 'Drop your file here'}
+                    </p>
+                    <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--c-text-muted, #6f6d78)' }}>or upload from your device</p>
                   </div>
-                  <p style={{ margin: 0, fontSize: 17, fontWeight: 400, color: dropActive ? 'var(--accent,#5b50e0)' : 'var(--c-text-dim, #37352f)', fontFamily: 'ui-sans-serif,sans-serif', transition: 'color .15s' }}>
-                    {dropActive ? 'Drop to import' : 'or drop your file here'}
-                  </p>
                   <button
                     onClick={() => patch({ importOpen: true, importError: null })}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', fontSize: '14px', fontWeight: 600, color: '#fff', background: 'var(--accent,#5b50e0)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'ui-sans-serif,sans-serif' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 26px', fontSize: '14px', fontWeight: 600, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
                     Upload your file
                   </button>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginTop: '2px', fontSize: '12.5px', color: 'var(--c-text-muted, #6f6d78)' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Your file is secure and will only be used for this application.
+                  </div>
                 </div>
               </div>
             ) : s.view === 'preview' ? (
@@ -742,7 +738,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                 />
                 {pdfState.loading && (
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(240,239,242,.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
-                    <span style={{ fontSize: '13px', color: 'var(--c-text-subtle,#888)', fontFamily: 'ui-sans-serif,sans-serif' }}>Updating…</span>
+                    <span style={{ fontSize: '13px', color: 'var(--c-text-subtle,#888)' }}>Updating…</span>
                   </div>
                 )}
               </>
@@ -753,7 +749,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
                     <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#ec6a5e', display: 'inline-block' }} />
                     <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#f4bf4f', display: 'inline-block' }} />
                     <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#61c554', display: 'inline-block' }} />
-                    <span style={{ marginLeft: '8px', fontSize: '11.5px', fontFamily: "'IBM Plex Mono',monospace", color: '#8a877f' }}>{fileName}.tex</span>
+                    <span style={{ marginLeft: '8px', fontSize: '11.5px', color: '#8a877f' }}>{fileName}.tex</span>
                   </div>
                   <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", fontSize: '12px', lineHeight: 1.6, color: '#d7d3c8', margin: 0 }}>{genTex({ ...s, fontScale: fontScaleState }, paperSize)}</pre>
                 </div>
@@ -763,14 +759,14 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
 
           {/* FILENAME STATUS BAR */}
           <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '34px', borderTop: '1px solid var(--c-border-subtle, #e2e1e4)', background: 'var(--c-preview-toolbar-bg, #faf9fb)' }}>
-            <span style={{ color: 'var(--accent2,#f5871f)', fontSize: '12px' }}>↓</span>
-            <span style={{ fontSize: '12.5px', fontFamily: "'IBM Plex Mono',ui-monospace,monospace", color: 'var(--c-text-subtle, #6b6a72)' }}>{fileName}.{ext}</span>
+            <span style={{ color: 'var(--accent2,#893172)', fontSize: '12px' }}>↓</span>
+            <span style={{ fontSize: '12.5px', color: 'var(--c-text-subtle, #6b6a72)' }}>{fileName}.{ext}</span>
           </div>
 
           {/* COMPILING OVERLAY */}
           {s.compiling && (
             <div style={{ position: 'absolute', inset: '42px 0 34px 0', background: 'var(--c-overlay-bg, rgba(240,239,242,.78))', backdropFilter: 'blur(2px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', zIndex: 8 }}>
-              <div style={{ width: '34px', height: '34px', border: '3px solid var(--c-overlay-spinner-track, #dcdbe2)', borderTopColor: 'var(--accent,#5b50e0)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
+              <div style={{ width: '34px', height: '34px', border: '3px solid var(--c-overlay-spinner-track, #dcdbe2)', borderTopColor: 'var(--accent,#213885)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
               <div style={{ fontSize: '13.5px', color: 'var(--c-text-subtle, #6b6a72)', fontWeight: 500 }}>Generating {s.format} file…</div>
             </div>
           )}
@@ -780,7 +776,7 @@ export default function ResumeBuilder({ accent = '#5b50e0', accent2 = '#f5871f',
       {/* TOAST */}
       {s.toast && (
         <div style={{ position: 'fixed', bottom: '22px', left: '50%', transform: 'translateX(-50%)', background: 'var(--c-toast-bg, #2c2c34)', color: 'var(--c-toast-text, #fff)', fontSize: '13.5px', fontWeight: 500, padding: '11px 18px', borderRadius: '9px', boxShadow: '0 8px 30px rgba(0,0,0,.25)', display: 'flex', alignItems: 'center', gap: '9px', animation: 'pop .2s ease', zIndex: 20 }}>
-          <span style={{ color: 'var(--accent2,#f5871f)', fontSize: '15px' }}>✓</span> {fileName}.{ext} downloaded
+          <span style={{ color: 'var(--accent2,#893172)', fontSize: '15px' }}>✓</span> {fileName}.{ext} downloaded
         </div>
       )}
 
@@ -812,7 +808,7 @@ function PersonalField({ label, required, check, input }: { label: string; requi
   return (
     <div style={{ margin: '0 0 14px' }}>
       <label style={labelStyle}>
-        {required && <span style={{ color: 'var(--accent2,#f5871f)' }}>*</span>}
+        {required && <span style={{ color: 'var(--accent2,#893172)' }}>*</span>}
         {required ? ' ' : ''}
         {label}
       </label>
@@ -848,7 +844,7 @@ function FontSizeControl({ scale, onChange }: { scale: number; onChange: (next: 
       style={{
         minWidth: '40px', height: '30px', padding: '0 12px',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '14px', fontWeight: 700, lineHeight: 1, color: 'var(--accent,#5b50e0)',
+        fontSize: '14px', fontWeight: 700, lineHeight: 1, color: 'var(--accent,#213885)',
         background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)',
         borderRadius: '8px', outline: 'none',
         cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1,

@@ -34,7 +34,7 @@ const insertionLine: CSSProperties = {
   top: '-4px',
   height: '3px',
   borderRadius: '2px',
-  background: 'var(--accent,#5b50e0)',
+  background: 'var(--accent,#213885)',
 }
 
 function DragHandle({ handleProps, anchor }: { handleProps: DragBundle['handleProps']; anchor?: string }) {
@@ -94,7 +94,7 @@ function DateRange({
             type="checkbox"
             checked={!!present}
             onChange={e => onPresent(e.target.checked)}
-            style={{ width: '18px', height: '18px', accentColor: 'var(--accent,#5b50e0)', cursor: 'pointer' }}
+            style={{ width: '18px', height: '18px', accentColor: 'var(--accent,#213885)', cursor: 'pointer' }}
           />{' '}
           I presently work here
         </label>
@@ -239,7 +239,7 @@ export function ProjectCard({
           className="dc-input"
           value={item.link}
           onChange={(e) => update('link', e.target.value)}
-          style={{ ...inputStyle, fontSize: '14px', fontFamily: "'IBM Plex Mono',ui-monospace,monospace" }}
+          style={{ ...inputStyle, fontSize: '14px' }}
         />
       </div>
       <div style={{ margin: '0 0 12px' }}>
@@ -405,7 +405,7 @@ export function EducationCard({
           <Hover
             as="button"
             onClick={() => setMenuOpen(o => !o)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#5b50e0)', background: 'var(--c-accent-tint, #f3f2fc)', border: '1px solid var(--c-accent-tint-border, #ddd9f5)', borderRadius: '8px', padding: '7px 12px', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#213885)', background: 'var(--c-accent-tint, #f3f2fc)', border: '1px solid var(--c-accent-tint-border, #ddd9f5)', borderRadius: '8px', padding: '7px 12px', cursor: 'pointer' }}
             hoverStyle={{ background: 'var(--c-accent-tint-hover, #ebe9fb)' }}
           >+ Add detail <span style={{ fontSize: '10px' }}>▼</span></Hover>
           {menuOpen && (

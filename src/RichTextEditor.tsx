@@ -35,7 +35,7 @@ const SmartPaste = Extension.create({
   },
 })
 
-const activeBtnStyle: CSSProperties = { background: 'var(--c-toolbar-active, #eceaf6)', color: 'var(--accent,#5b50e0)' }
+const activeBtnStyle: CSSProperties = { background: 'var(--c-toolbar-active, #eceaf6)', color: 'var(--accent,#213885)' }
 
 export function RichTextEditor({ value, onChange }: Props) {
   const lastEmitted = useRef<string>(value)

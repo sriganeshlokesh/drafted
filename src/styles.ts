@@ -35,7 +35,7 @@ export const checkBadge: CSSProperties = {
   width: '20px',
   height: '20px',
   borderRadius: '50%',
-  background: 'var(--accent2,#f5871f)',
+  background: 'var(--accent2,#893172)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -63,7 +63,7 @@ export const addBtn: CSSProperties = {
   width: '100%',
   fontSize: '14px',
   fontWeight: 500,
-  color: 'var(--accent,#5b50e0)',
+  color: 'var(--accent,#213885)',
   background: 'var(--c-accent-tint, #f3f2fc)',
   border: '1px solid var(--c-accent-tint-border, #ddd9f5)',
   borderRadius: '9px',
@@ -94,7 +94,7 @@ export const dragHandle: CSSProperties = {
 export const dragHandleHover: CSSProperties = {
   background: 'var(--c-accent-tint, #f3f2fc)',
   borderColor: 'var(--c-drag-hover-border, #d8d8df)',
-  color: 'var(--accent,#5b50e0)',
+  color: 'var(--accent,#213885)',
 }
 
 /** The card wrapper used by every repeatable entry (Experience / Projects / …). */

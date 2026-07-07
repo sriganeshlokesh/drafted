@@ -1,145 +1,158 @@
 * { margin: 0; box-sizing: border-box; }
 html, body { height: 100%; }
 
-/* ── Color tokens (light defaults) ───────────────────────────────────────── */
+/* ── Color tokens (light defaults) — "Lapis velvet" (no cream) ────────────────
+   Swatches: #213885 lapis · #081849 deep navy · #5F3475 velvet purple
+             #893172 magenta · #CCCACC gray  (cream #ECDFD2 intentionally unused) */
 :root {
-  --c-bg: #fff;
-  --c-bg-subtle: #fafaf9;
-  --c-bg-muted: #f0eff2;
-  --c-bg-elevated: #fff;
+  --c-bg: #ffffff;       /* surfaces: inputs, cards, chrome bars, page */
+  --c-bg-subtle: #f4f4f6;
+  --c-bg-muted: #e6e6ea; /* preview canvas behind the résumé paper */
+  --c-bg-elevated: #ffffff;
 
-  --c-text: #2c2c34;
-  --c-text-muted: #9b9a97;
-  --c-text-subtle: #6b6a72;
-  --c-text-label: #8e8e93;
-  --c-text-dim: #37352f;
+  --c-text: #1a1a2e;
+  --c-text-muted: #6f6d78;
+  --c-text-subtle: #55535f;
+  --c-text-label: #74727e;
+  --c-text-dim: #101a3d;
 
-  --c-border: #e4e4e9;
-  --c-border-subtle: #ededec;
+  --c-border: #d7d7db;
+  --c-border-subtle: #e6e6ea;
 
-  --c-accent-tint: #f3f2fc;
-  --c-accent-tint-hover: #ebe9fb;
-  --c-accent-tint-border: #ddd9f5;
+  /* Brand accents — lapis primary, magenta pop, velvet-purple secondary. */
+  --accent: #213885;
+  --accent2: #893172;
+  --c-secondary: #5f3475;
+
+  --c-accent-tint: #efeaf3;
+  --c-accent-tint-hover: #e7def0;
+  --c-accent-tint-border: #d9cbe4;
 
   --c-remove-text: #5c5c63;
   --c-remove-hover-bg: #fbecec;
   --c-remove-hover-border: #e8b4b0;
   --c-remove-hover-text: #c0492f;
 
-  --c-tag-text: #4b41c9;
-  --c-tag-remove: #9b93e6;
-  --c-tag-remove-hover: #e3dffa;
+  --c-tag-text: #5f3475;
+  --c-tag-remove: #9174a5;
+  --c-tag-remove-hover: #e7def0;
 
-  --c-toolbar-bg: #fafafa;
-  --c-toolbar-border: #efefef;
-  --c-toolbar-active: #eceaf6;
+  --c-toolbar-bg: #f4f4f6;
+  --c-toolbar-border: #e6e6ea;
+  --c-toolbar-active: #ece2f0;
 
-  --c-preview-toolbar-bg: #faf9fb;
-  --c-preview-tab-bg: #e4e3e8;
-  --c-page-counter-bg: #e8e7ec;
-  --c-overlay-bg: rgba(240, 239, 242, .78);
-  --c-overlay-spinner-track: #dcdbe2;
+  --c-preview-toolbar-bg: #f2f2f4;
+  --c-preview-tab-bg: #dedee3;
+  --c-page-counter-bg: #e2e2e6;
+  --c-overlay-bg: rgba(244, 244, 246, .82);
+  --c-overlay-spinner-track: #d6d6dc;
 
-  --c-import-bg: #efedfb;
-  --c-import-border: #ddd8f7;
-  --c-import-hover-bg: #e6e2fb;
-  --c-reset-bg: #f0eff2;
-  --c-reset-border: #d5d4d8;
-  --c-reset-hover-bg: #e5e4e8;
+  --c-import-bg: #efe8f3;
+  --c-import-border: #ddcfe6;
+  --c-import-hover-bg: #e7def0;
+  --c-reset-bg: #eeeef0;
+  --c-reset-border: #d9d9de;
+  --c-reset-hover-bg: #e5e5e9;
 
-  --c-toast-bg: #2c2c34;
+  --c-toast-bg: #081849;
   --c-toast-text: #fff;
 
-  --c-scrollbar: #d3d1cb;
-  --c-scrollbar-hover: #b9b6ad;
-  --c-placeholder: #a6a6ab;
+  --c-scrollbar: #cccacc;
+  --c-scrollbar-hover: #b0aeb2;
+  --c-placeholder: #a3a3aa;
 
-  --c-ring-track: #e4e3ee;
-  --c-drag-hover-border: #d8d8df;
-  --c-disabled-bg: #f3f3f5;
+  --c-ring-track: #e2e2e6;
+  --c-drag-hover-border: #d3d3d9;
+  --c-disabled-bg: #eeeef0;
 
-  --c-mobile-tab-active: #fff;
-  --c-mobile-tab-inactive: #f5f5f5;
-  --c-mobile-tab-active-border: #d8d6e8;
-  --c-mobile-tab-inactive-border: #e8e8ec;
+  --c-mobile-tab-active: #ffffff;
+  --c-mobile-tab-inactive: #eeeef1;
+  --c-mobile-tab-active-border: #cbbad6;
+  --c-mobile-tab-inactive-border: #e4e4e8;
 }
 
-/* ── Dark overrides ───────────────────────────────────────────────────────── */
+/* ── Dark overrides ───────────────────────────────────────────────────────────
+   Lapis/magenta are too dark on the dark canvas, so accents lift to a legible
+   periwinkle / lighter magenta that still work as fills with white text.        */
 html[data-theme="dark"] {
-  --c-bg: #1e1e22;
-  --c-bg-subtle: #26262a;
-  --c-bg-muted: #1a1a1e;
-  --c-bg-elevated: #2c2c32;
+  --c-bg: #1c1c22;
+  --c-bg-subtle: #24242b;
+  --c-bg-muted: #131318;
+  --c-bg-elevated: #26262e;
 
-  --c-text: #e2e2e8;
-  --c-text-muted: #8c8c94;
-  --c-text-subtle: #8c8c94;
-  --c-text-label: #8e8e93;
-  --c-text-dim: #c7c7cc;
+  --c-text: #e6e6ee;
+  --c-text-muted: #8f8d9a;
+  --c-text-subtle: #8f8d9a;
+  --c-text-label: #8b8996;
+  --c-text-dim: #cbcad4;
 
   --c-border: #38383f;
-  --c-border-subtle: #30303a;
+  --c-border-subtle: #2e2e35;
 
-  --c-accent-tint: #242238;
-  --c-accent-tint-hover: #2d2950;
-  --c-accent-tint-border: #6b64b8;
+  --accent: #6478cf;
+  --accent2: #c063a1;
+  --c-secondary: #9c7fc0;
+
+  --c-accent-tint: #262238;
+  --c-accent-tint-hover: #322c4e;
+  --c-accent-tint-border: #5f5698;
 
   --c-remove-text: #9c9ca3;
   --c-remove-hover-bg: #3a1c1c;
   --c-remove-hover-border: #6b3232;
   --c-remove-hover-text: #e56b55;
 
-  --c-tag-text: #9b91e8;
-  --c-tag-remove: #7a72cc;
-  --c-tag-remove-hover: #302c58;
+  --c-tag-text: #b79ad9;
+  --c-tag-remove: #8f77b8;
+  --c-tag-remove-hover: #342c50;
 
-  --c-toolbar-bg: #28282c;
-  --c-toolbar-border: #363638;
-  --c-toolbar-active: #2d2b48;
+  --c-toolbar-bg: #24242b;
+  --c-toolbar-border: #35353c;
+  --c-toolbar-active: #302a48;
 
-  --c-preview-toolbar-bg: #26262a;
-  --c-preview-tab-bg: #363640;
+  --c-preview-toolbar-bg: #1f1f26;
+  --c-preview-tab-bg: #34343c;
   --c-page-counter-bg: #38383f;
-  --c-overlay-bg: rgba(22, 22, 26, .85);
-  --c-overlay-spinner-track: #3c3c42;
+  --c-overlay-bg: rgba(19, 19, 24, .85);
+  --c-overlay-spinner-track: #3b3b44;
 
-  --c-import-bg: #252338;
-  --c-import-border: #3b3760;
-  --c-import-hover-bg: #2d2944;
-  --c-reset-bg: #2a2a2e;
-  --c-reset-border: #3a3a3f;
-  --c-reset-hover-bg: #333338;
+  --c-import-bg: #262238;
+  --c-import-border: #3c375f;
+  --c-import-hover-bg: #2f2a46;
+  --c-reset-bg: #29292f;
+  --c-reset-border: #3a3a42;
+  --c-reset-hover-bg: #333339;
 
-  --c-toast-bg: #e2e2e8;
-  --c-toast-text: #1c1c20;
+  --c-toast-bg: #e6e6ee;
+  --c-toast-text: #14141a;
 
   --c-scrollbar: #4a4a52;
   --c-scrollbar-hover: #62626a;
-  --c-placeholder: #68686e;
+  --c-placeholder: #6a6a70;
 
-  --c-ring-track: #8880d0;
+  --c-ring-track: #34343f;
   --c-drag-hover-border: #48484f;
-  --c-disabled-bg: #2a2a2e;
+  --c-disabled-bg: #29292f;
 
-  --c-mobile-tab-active: #2c2c32;
-  --c-mobile-tab-inactive: #1e1e22;
-  --c-mobile-tab-active-border: #4a4870;
-  --c-mobile-tab-inactive-border: #30303a;
+  --c-mobile-tab-active: #26262e;
+  --c-mobile-tab-inactive: #16161c;
+  --c-mobile-tab-active-border: #4a4570;
+  --c-mobile-tab-inactive-border: #2e2e35;
 }
 
 body {
   margin: 0;
   background: var(--c-bg, #fff);
-  color: var(--c-text, #2c2c34);
+  color: var(--c-text, #1a1a2e);
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 #root { height: 100%; }
 
 ::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-thumb { background: var(--c-scrollbar, #d3d1cb); border-radius: 7px; border: 3px solid transparent; background-clip: content-box; }
-::-webkit-scrollbar-thumb:hover { background: var(--c-scrollbar-hover, #b9b6ad); background-clip: content-box; }
-::placeholder { color: var(--c-placeholder, #a6a6ab); }
+::-webkit-scrollbar-thumb { background: var(--c-scrollbar, #cccacc); border-radius: 7px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-scrollbar-hover, #b0aeb2); background-clip: content-box; }
+::placeholder { color: var(--c-placeholder, #a3a3aa); }
 
 textarea { resize: vertical; font-family: inherit; }
 input, textarea, button, select { font-family: inherit; }
@@ -150,8 +163,8 @@ button:disabled { opacity: .35; cursor: default; }
 
 /* Shared focus ring for every form control (the design's style-focus attribute). */
 .dc-input:focus {
-  border-color: var(--accent, #5b50e0);
-  box-shadow: 0 0 0 3px rgba(91, 80, 224, .15);
+  border-color: var(--accent, #213885);
+  box-shadow: 0 0 0 3px rgba(33, 56, 133, .18);
 }
 
 /* Resume preview experience bullets rendered HTML */
@@ -171,7 +184,7 @@ button:disabled { opacity: .35; cursor: default; }
 .rich-editor .tiptap {
   font-size: 14.5px;
   line-height: 1.6;
-  color: var(--c-text, #2c2c34);
+  color: var(--c-text, #1a1a2e);
   padding: 11px 13px;
   min-height: 100px;
   outline: none;

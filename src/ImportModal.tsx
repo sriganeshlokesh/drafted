@@ -58,7 +58,7 @@ export function ImportModal({ open, importing, error, onFile, onClose }: Props) 
       <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'calc(100% - 32px)', maxWidth: 540, background: 'var(--c-bg-elevated, #fff)', borderRadius: '16px', padding: '24px', boxShadow: '0 20px 60px rgba(0,0,0,.22)', zIndex: 41 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '18px' }}>
-          <span style={{ flex: 'none', width: '40px', height: '40px', borderRadius: '10px', background: 'var(--c-import-bg, #efedfb)', color: 'var(--accent,#5b50e0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UploadIcon size={18} /></span>
+          <span style={{ flex: 'none', width: '40px', height: '40px', borderRadius: '10px', background: 'var(--c-import-bg, #efedfb)', color: 'var(--accent,#213885)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UploadIcon size={18} /></span>
           <div style={{ flex: 1 }}>
             <p style={{ margin: '0 0 2px', fontSize: '18px', fontWeight: 700, color: 'var(--c-text, #1a1a1a)' }}>Import your résumé</p>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--c-text-muted, #9b9a97)' }}>Upload a file and it fills the form for you</p>
@@ -88,7 +88,7 @@ export function ImportModal({ open, importing, error, onFile, onClose }: Props) 
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           style={{
-            border: `2px dashed ${dragOver ? 'var(--accent,#5b50e0)' : 'var(--c-border, #d9d8de)'}`,
+            border: `2px dashed ${dragOver ? 'var(--accent,#213885)' : 'var(--c-border, #d9d8de)'}`,
             borderRadius: '14px',
             background: dragOver ? 'var(--c-accent-tint, #f6f5fe)' : 'var(--c-bg-subtle, #fafafa)',
             padding: '40px 24px',
@@ -99,12 +99,12 @@ export function ImportModal({ open, importing, error, onFile, onClose }: Props) 
         >
           {importing ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-              <span style={{ width: '26px', height: '26px', border: '3px solid var(--c-overlay-spinner-track, #e0def4)', borderTopColor: 'var(--accent,#5b50e0)', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
+              <span style={{ width: '26px', height: '26px', border: '3px solid var(--c-overlay-spinner-track, #e0def4)', borderTopColor: 'var(--accent,#213885)', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
               <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--c-text-dim, #37352f)' }}>Reading your résumé…</span>
             </div>
           ) : (
             <>
-              <span style={{ display: 'inline-flex', width: '46px', height: '46px', borderRadius: '12px', background: 'var(--c-import-bg, #efedfb)', color: 'var(--accent,#5b50e0)', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}><UploadIcon size={22} /></span>
+              <span style={{ display: 'inline-flex', width: '46px', height: '46px', borderRadius: '12px', background: 'var(--c-import-bg, #efedfb)', color: 'var(--accent,#213885)', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}><UploadIcon size={22} /></span>
               <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 700, color: 'var(--c-text, #1a1a1a)' }}>Drop your résumé here, or click to browse</p>
               <p style={{ margin: 0, fontSize: '13px', color: 'var(--c-text-muted, #9b9a97)' }}>PDF or plain-text file (.pdf, .txt, .tex, .md)</p>
             </>
