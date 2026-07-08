@@ -9,6 +9,13 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@react-pdf/renderer'],
   },
+  // Proxy the forged evaluation API in dev so browser requests stay same-origin
+  // (forged has no CORS middleware). The client calls the relative `/v1/...`.
+  server: {
+    proxy: {
+      '/v1': { target: 'http://localhost:8080', changeOrigin: true },
+    },
+  },
   test: {
     environment: 'jsdom',
   },

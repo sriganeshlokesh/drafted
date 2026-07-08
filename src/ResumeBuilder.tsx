@@ -9,6 +9,7 @@ import { normalizeResumeData } from './normalize'
 import { ImportModal, UploadIcon } from './ImportModal'
 import { importResume } from './resumeImport'
 import { hasResumeContent } from './resumeContent'
+import { evaluateResume, EvaluationError } from './evaluation'
 import { ResumePdfDocument } from './resumePdf'
 import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
 import { FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, clampFontScale } from './fontScale'
@@ -485,6 +486,25 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
           </Hover>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
+          {/* Dev-only smoke test for the forged /v1/evaluations integration. Gated
+              behind import.meta.env.DEV so it never ships; remove once the real
+              job-description input + results panel land. */}
+          {import.meta.env.DEV && (
+            <Hover as="button" title="Dev-only: evaluate résumé against a job description" onMouseDown={(e) => e.preventDefault()} onClick={async () => {
+              const jd = window.prompt('Paste a job description to evaluate against')
+              if (!jd) return
+              try {
+                const result = await evaluateResume(state, jd)
+                console.log('[evaluate] result', result)
+                window.alert(`Score: ${result.score}/100\n\n${result.summary}`)
+              } catch (err) {
+                console.error('[evaluate] error', err)
+                window.alert(err instanceof EvaluationError ? err.message : 'Evaluation failed.')
+              }
+            }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px dashed var(--c-reset-border, #b8b6bd)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)' }}>
+              <span>⚡</span>{!isMobile && ' Evaluate'}
+            </Hover>
+          )}
           <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#213885)', background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}>
             <UploadIcon />{!isMobile && 'Import'}
           </Hover>
