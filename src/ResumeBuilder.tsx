@@ -9,7 +9,8 @@ import { normalizeResumeData } from './normalize'
 import { ImportModal, UploadIcon } from './ImportModal'
 import { importResume } from './resumeImport'
 import { hasResumeContent } from './resumeContent'
-import { evaluateResume, EvaluationError } from './evaluation'
+import { evaluateResume, EvaluationError, type EvaluationResponse } from './evaluation'
+import { JobMatchMode } from './JobMatch'
 import { ResumePdfDocument } from './resumePdf'
 import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
 import { FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, clampFontScale } from './fontScale'
@@ -28,6 +29,15 @@ interface State extends ResumeData {
   importOpen: boolean
   importing: boolean
   importError: string | null
+  mode: 'editor' | 'match'
+  jobDescription: string
+  jdInputMode: 'link' | 'paste'
+  evalResult: EvaluationResponse | null
+  evalPrevScore: number | null
+  evalAt: number | null
+  evalLoading: boolean
+  evalError: string | null
+  evalDimKey: string | null
 }
 
 const SAVE_KEY = 'latexResumeBuilder:v1'
@@ -53,6 +63,15 @@ const initialState: State = {
   importOpen: false,
   importing: false,
   importError: null,
+  mode: 'editor',
+  jobDescription: '',
+  jdInputMode: 'paste',
+  evalResult: null,
+  evalPrevScore: null,
+  evalAt: null,
+  evalLoading: false,
+  evalError: null,
+  evalDimKey: null,
   firstName: '',
   lastName: '',
   email: '',
@@ -72,6 +91,7 @@ const initialState: State = {
 const slug = (t: string) => (t || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 const DARK_KEY = 'drafted:darkMode'
+const MATCH_KEY = 'drafted:match:v1'
 
 export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
   const [state, setState] = useState<State>(initialState)
@@ -92,6 +112,7 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
     return next
   })
   const scrollRef = useRef<HTMLDivElement>(null)
+  const evalAbort = useRef<AbortController | null>(null)
   const pageH = paperSize === 'A4' ? 1123 : 1056
   const pageW = paperSize === 'A4' ? 794 : 816
 
@@ -264,6 +285,29 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
   }
   const download = () => runDownload(state.format)
 
+  // ── Job match ──────────────────────────────────────────────────────────
+  const runMatch = async () => {
+    if (state.evalLoading) return
+    evalAbort.current?.abort()
+    const ctrl = new AbortController()
+    evalAbort.current = ctrl
+    patch({ evalLoading: true, evalError: null })
+    try {
+      const res = await evaluateResume(state, state.jobDescription, ctrl.signal)
+      if (ctrl.signal.aborted) return
+      patch({
+        evalLoading: false,
+        evalResult: res,
+        evalPrevScore: state.evalResult?.score ?? null,
+        evalAt: Date.now(),
+        evalDimKey: res.dimensions[0]?.key ?? null,
+      })
+    } catch (err) {
+      if (ctrl.signal.aborted) return
+      patch({ evalLoading: false, evalError: err instanceof EvaluationError ? err.message : 'Evaluation failed.' })
+    }
+  }
+
   const runImport = async (file: File) => {
     const ext = (file.name.split('.').pop() || '').toLowerCase()
     if (!['pdf', 'txt', 'tex', 'md', 'markdown'].includes(ext)) {
@@ -367,10 +411,47 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
     return () => window.removeEventListener('beforeunload', flush)
   }, [])
 
+  // ── Match report persistence (separate key; kept out of the résumé snapshot) ──
+  const matchLoaded = useRef(false)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MATCH_KEY)
+      if (raw) {
+        const d = JSON.parse(raw)
+        if (d && typeof d === 'object') {
+          patch({
+            jobDescription: typeof d.jobDescription === 'string' ? d.jobDescription : '',
+            evalResult: d.evalResult ?? null,
+            evalAt: typeof d.evalAt === 'number' ? d.evalAt : null,
+            evalPrevScore: typeof d.evalPrevScore === 'number' ? d.evalPrevScore : null,
+            evalDimKey: d.evalResult?.dimensions?.[0]?.key ?? null,
+          })
+        }
+      }
+    } catch { /* ignore */ }
+    matchLoaded.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (!matchLoaded.current) return
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(MATCH_KEY, JSON.stringify({
+          jobDescription: state.jobDescription,
+          evalResult: state.evalResult,
+          evalAt: state.evalAt,
+          evalPrevScore: state.evalPrevScore,
+        }))
+      } catch { /* ignore */ }
+    }, 500)
+    return () => clearTimeout(t)
+  }, [state.jobDescription, state.evalResult, state.evalAt, state.evalPrevScore])
+
   useEffect(() => () => {
     clearTimeout(t1.current)
     clearTimeout(t2.current)
     clearTimeout(saveTimer.current)
+    evalAbort.current?.abort()
   }, [])
 
   useEffect(() => {
@@ -486,25 +567,12 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
           </Hover>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
-          {/* Dev-only smoke test for the forged /v1/evaluations integration. Gated
-              behind import.meta.env.DEV so it never ships; remove once the real
-              job-description input + results panel land. */}
-          {import.meta.env.DEV && (
-            <Hover as="button" title="Dev-only: evaluate résumé against a job description" onMouseDown={(e) => e.preventDefault()} onClick={async () => {
-              const jd = window.prompt('Paste a job description to evaluate against')
-              if (!jd) return
-              try {
-                const result = await evaluateResume(state, jd)
-                console.log('[evaluate] result', result)
-                window.alert(`Score: ${result.score}/100\n\n${result.summary}`)
-              } catch (err) {
-                console.error('[evaluate] error', err)
-                window.alert(err instanceof EvaluationError ? err.message : 'Evaluation failed.')
-              }
-            }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px dashed var(--c-reset-border, #b8b6bd)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)' }}>
-              <span>⚡</span>{!isMobile && ' Evaluate'}
-            </Hover>
-          )}
+          <Hover as="button" onClick={() => patch({ mode: s.mode === 'match' ? 'editor' : 'match' })} onMouseDown={(e) => e.preventDefault()} title="Match your résumé to a job description" style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: isMobile ? '7px 9px' : '7px 12px', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'var(--accent, #213885)', border: 'none', borderRadius: '8px', cursor: 'pointer', outline: 'none', boxShadow: s.mode === 'match' ? '0 0 0 2px var(--c-accent-tint-border, #d9cbe4)' : 'none' }} hoverStyle={{ filter: 'brightness(1.1)' }}>
+            <span style={{ fontSize: '14px' }}>◎</span>{!isMobile && ' Match'}
+            {s.evalResult && (
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,.22)', borderRadius: '6px', padding: '1px 7px', letterSpacing: '.01em' }}>{s.evalResult.score}</span>
+            )}
+          </Hover>
           <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#213885)', background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}>
             <UploadIcon />{!isMobile && 'Import'}
           </Hover>
@@ -589,7 +657,7 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
               {i > 0 && <div style={{ width: '36px', height: '1px', background: 'var(--c-border, #dcdbd6)' }} />}
               <Hover
-                onClick={() => patch({ step: i })}
+                onClick={() => patch({ step: i, mode: 'editor' })}
                 style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: activeStep ? '5px 12px 5px 5px' : '5px 8px 5px 5px', borderRadius: '20px', cursor: 'pointer', background: activeStep ? 'var(--c-bg-muted, #eeeeec)' : 'transparent', border: 'none', transition: 'background .1s' }}
                 hoverStyle={{ background: 'var(--c-bg-muted, #eeeeec)' }}
               >
@@ -611,6 +679,28 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
       )}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', minHeight: 0 }}>
+        {s.mode === 'match' ? (
+          <JobMatchMode
+            jobDescription={s.jobDescription}
+            jdInputMode={s.jdInputMode}
+            result={s.evalResult}
+            previousScore={s.evalPrevScore}
+            evaluatedAt={s.evalAt}
+            loading={s.evalLoading}
+            error={s.evalError}
+            selectedDimKey={s.evalDimKey}
+            hasContent={hasContent}
+            isMobile={isMobile}
+            mobilePane={s.mobilePane}
+            onJdChange={(v) => patch({ jobDescription: v })}
+            onJdModeChange={(m) => patch({ jdInputMode: m })}
+            onRun={runMatch}
+            onSelectDim={(k) => patch({ evalDimKey: k })}
+            onJumpToSection={(step) => patch({ step, mode: 'editor' })}
+            onBack={() => patch({ mode: 'editor' })}
+          />
+        ) : (
+          <>
         {/* FORM COLUMN */}
         <section style={{ width: isMobile ? '100%' : '560px', flex: 'none', display: isMobile && s.mobilePane === 'preview' ? 'none' : 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--c-border-subtle, #ededec)', minWidth: 0, background: 'var(--c-bg, #fff)' }}>
           <div style={{ flex: 'none', padding: isMobile ? '14px 18px 10px' : '18px 20px 12px' }}>
@@ -793,6 +883,8 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             </div>
           )}
         </section>
+          </>
+        )}
       </div>
 
       {/* TOAST */}

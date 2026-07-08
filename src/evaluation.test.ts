@@ -66,7 +66,7 @@ describe('evaluateResume', () => {
     const body: EvaluationResponse = {
       status: 'ok', score: 82, summary: 'Strong match',
       dimensions: [{ key: 'skills_match', label: 'Skills', score: 30, max: 35, evidence: 'Go, TS' }],
-      strengths: ['Go'], gaps: [], suggestions: ['Add metrics'],
+      strengths: ['Go'], gaps: [], suggestions: [{ text: 'Add metrics', section: 'experience', dimension: 'impact_evidence', estimated_lift: 4 }],
     }
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200, json: () => Promise.resolve(body),

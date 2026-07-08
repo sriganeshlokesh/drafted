@@ -76,7 +76,17 @@ export interface EvaluationResponse {
   dimensions: EvaluationDimension[]
   strengths: string[]
   gaps: string[]
-  suggestions: string[]
+  suggestions: EvaluationSuggestion[]
+}
+
+export interface EvaluationSuggestion {
+  text: string
+  /** Résumé section to edit: "summary" | "experience" | "projects" | "education" | "skills". */
+  section: string
+  /** Rubric dimension the edit improves (matches a dimension key). */
+  dimension: string
+  /** Estimated score points gained if applied. */
+  estimated_lift: number
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────
