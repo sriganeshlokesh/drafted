@@ -10,9 +10,9 @@ const EMPTY: ResumeData = {
 }
 
 const blankExperience: Experience = {
-  company: '', role: '', employment: '', start: '', end: '', present: false, bulletsText: '',
+  id: 'exp-blank', company: '', role: '', employment: '', start: '', end: '', present: false, bulletsText: '',
 }
-const blankSkillGroup: SkillGroup = { label: '', items: [], draft: '' }
+const blankSkillGroup: SkillGroup = { id: 'sg-blank', label: '', items: [], draft: '' }
 
 describe('hasResumeContent', () => {
   it('is false for a blank résumé', () => {

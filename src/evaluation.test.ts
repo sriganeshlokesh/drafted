@@ -4,18 +4,18 @@ import type { EvaluationResponse } from './evaluation'
 import type { Education, Experience, Project, ResumeData, SkillGroup } from './types'
 
 const experience: Experience = {
-  company: 'Acme', role: 'Engineer', employment: 'Full-time',
+  id: 'exp-1', company: 'Acme', role: 'Engineer', employment: 'Full-time',
   start: '2020-01', end: '2022-03', present: false, bulletsText: '<ul><li>Shipped things</li></ul>',
 }
 const project: Project = {
-  name: 'Widget', link: 'https://x.dev', description: '<p>A widget</p>',
+  id: 'prj-1', name: 'Widget', link: 'https://x.dev', description: '<p>A widget</p>',
   techStack: ['Go', 'React'], techStackDraft: 'Type',
 }
 const education: Education = {
-  school: 'State U', degree: 'BSc', start: '2016-09', end: '2020-05',
+  id: 'edu-1', school: 'State U', degree: 'BSc', start: '2016-09', end: '2020-05',
   extraDetails: [{ label: 'GPA', value: '3.9' }],
 }
-const skillGroup: SkillGroup = { label: 'Languages', items: ['Go', 'TS'], draft: 'Ru' }
+const skillGroup: SkillGroup = { id: 'sg-1', label: 'Languages', items: ['Go', 'TS'], draft: 'Ru' }
 
 const RESUME: ResumeData = {
   firstName: 'Ada', lastName: 'Lovelace', email: 'ada@x.dev', linkedin: 'in/ada',
@@ -42,7 +42,16 @@ describe('toEvaluationRequest', () => {
     expect(req.resume.experience[0].bullets).toBe('<ul><li>Shipped things</li></ul>')
     expect(req.resume.projects[0].tech_stack).toEqual(['Go', 'React'])
     expect(req.resume.education[0].extra_details).toEqual([{ label: 'GPA', value: '3.9' }])
-    expect(req.resume.skill_groups[0]).toEqual({ label: 'Languages', items: ['Go', 'TS'] })
+    expect(req.resume.skill_groups[0]).toEqual({ id: 'sg-1', label: 'Languages', items: ['Go', 'TS'] })
+  })
+
+  it('includes the stable item id for every list item', () => {
+    const req = toEvaluationRequest(RESUME, 'jd')
+
+    expect(req.resume.experience[0].id).toBe('exp-1')
+    expect(req.resume.projects[0].id).toBe('prj-1')
+    expect(req.resume.education[0].id).toBe('edu-1')
+    expect(req.resume.skill_groups[0].id).toBe('sg-1')
   })
 
   it('drops UI-only fields (drafts, targets, docTitle, wizard/view state)', () => {

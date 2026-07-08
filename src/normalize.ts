@@ -1,5 +1,10 @@
 import type { ResumeData } from './types'
 import { clampFontScale } from './fontScale'
+import { genId } from './idFactory'
+
+/** Keeps an existing non-empty string id; otherwise mints one (the id migration). */
+const ensureId = (x: Record<string, unknown>): string =>
+  typeof x.id === 'string' && x.id ? x.id : genId()
 
 /**
  * Normalizes a loosely-shaped résumé object into the exact `ResumeData` field
@@ -12,6 +17,7 @@ import { clampFontScale } from './fontScale'
  * - `projects[].description`: plain text → `<p>…</p>`
  * - `education[].start`/`end`: legacy `YYYY-MM` → `YYYY-MM-DD`
  * - `education[]`: legacy `gpa`/`detail` fields → `extraDetails: [{ label:'GPA', value }]`
+ * - every list item: missing `id` → freshly generated (persisted on next autosave)
  *
  * Anything already containing HTML (has a `<`) is left untouched, so this is
  * idempotent and safe to run on already-normalized data.
@@ -26,6 +32,7 @@ export function normalizeResumeData(input: Record<string, unknown>): Partial<Res
   if (Array.isArray(d.experience)) {
     d.experience = d.experience.map((x: Record<string, unknown>) => ({
       ...x,
+      id: ensureId(x),
       bulletsText:
         typeof x.bulletsText === 'string' && x.bulletsText && !x.bulletsText.includes('<')
           ? `<ul>${x.bulletsText
@@ -52,13 +59,14 @@ export function normalizeResumeData(input: Record<string, unknown>): Partial<Res
       if (oldGpa && !extraDetails.some((e: { label: string }) => e.label === 'GPA')) {
         extraDetails = [{ label: 'GPA', value: oldGpa }, ...extraDetails]
       }
-      return { ...x, start, end, extraDetails }
+      return { ...x, id: ensureId(x), start, end, extraDetails }
     })
   }
 
   if (Array.isArray(d.projects)) {
     d.projects = d.projects.map((x: Record<string, unknown>) => ({
       ...x,
+      id: ensureId(x),
       description: (() => {
         if (typeof x.description !== 'string' || !x.description || x.description.includes('<'))
           return x.description || ''
@@ -68,6 +76,13 @@ export function normalizeResumeData(input: Record<string, unknown>): Partial<Res
       })(),
       techStack: Array.isArray(x.techStack) ? x.techStack : [],
       techStackDraft: typeof x.techStackDraft === 'string' ? x.techStackDraft : '',
+    }))
+  }
+
+  if (Array.isArray(d.skillGroups)) {
+    d.skillGroups = d.skillGroups.map((x: Record<string, unknown>) => ({
+      ...x,
+      id: ensureId(x),
     }))
   }
 

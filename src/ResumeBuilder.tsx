@@ -6,6 +6,7 @@ import { genTex } from './tex'
 import { addBtn, addBtnHover, checkBadge, inputStyle, inputWithCheck, labelStyle } from './styles'
 import { RichTextEditor } from './RichTextEditor'
 import { normalizeResumeData } from './normalize'
+import { genId } from './idFactory'
 import { ImportModal, UploadIcon } from './ImportModal'
 import { importResume } from './resumeImport'
 import { hasResumeContent } from './resumeContent'
@@ -782,9 +783,9 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             {s.step === 1 && (
               <div>
                 {s.experience.map((it, i) => (
-                  <ExperienceCard key={i} item={it} drag={makeDrag('experience', i)} remove={() => removeItem('experience', i)} update={(f, v) => setItemField('experience', i, f as string, v)} />
+                  <ExperienceCard key={it.id} item={it} drag={makeDrag('experience', i)} remove={() => removeItem('experience', i)} update={(f, v) => setItemField('experience', i, f as string, v)} />
                 ))}
-                <Hover as="button" onClick={() => addItem('experience', { company: '', role: '', employment: 'Full-time', start: '', end: '', present: false, bulletsText: '' })} style={addBtn} hoverStyle={addBtnHover}>+ Add experience</Hover>
+                <Hover as="button" onClick={() => addItem('experience', { id: genId(), company: '', role: '', employment: 'Full-time', start: '', end: '', present: false, bulletsText: '' })} style={addBtn} hoverStyle={addBtnHover}>+ Add experience</Hover>
               </div>
             )}
 
@@ -792,9 +793,9 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             {s.step === 2 && (
               <div>
                 {s.projects.map((it, i) => (
-                  <ProjectCard key={i} item={it} drag={makeDrag('projects', i)} remove={() => removeItem('projects', i)} update={(f, v) => setItemField('projects', i, f as string, v)} onCommitTech={() => commitProjectTech(i)} onRemoveTech={(j) => removeProjectTech(i, j)} onBackspaceTech={() => backspaceProjectTech(i)} />
+                  <ProjectCard key={it.id} item={it} drag={makeDrag('projects', i)} remove={() => removeItem('projects', i)} update={(f, v) => setItemField('projects', i, f as string, v)} onCommitTech={() => commitProjectTech(i)} onRemoveTech={(j) => removeProjectTech(i, j)} onBackspaceTech={() => backspaceProjectTech(i)} />
                 ))}
-                <Hover as="button" onClick={() => addItem('projects', { name: '', link: '', description: '', techStack: [], techStackDraft: '' })} style={addBtn} hoverStyle={addBtnHover}>+ Add project</Hover>
+                <Hover as="button" onClick={() => addItem('projects', { id: genId(), name: '', link: '', description: '', techStack: [], techStackDraft: '' })} style={addBtn} hoverStyle={addBtnHover}>+ Add project</Hover>
               </div>
             )}
 
@@ -802,9 +803,9 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             {s.step === 3 && (
               <div>
                 {s.education.map((it, i) => (
-                  <EducationCard key={i} item={it} drag={makeDrag('education', i)} remove={() => removeItem('education', i)} update={(f, v) => setItemField('education', i, f as string, v)} />
+                  <EducationCard key={it.id} item={it} drag={makeDrag('education', i)} remove={() => removeItem('education', i)} update={(f, v) => setItemField('education', i, f as string, v)} />
                 ))}
-                <Hover as="button" onClick={() => addItem('education', { school: '', degree: '', start: '', end: '', extraDetails: [] })} style={addBtn} hoverStyle={addBtnHover}>+ Add education</Hover>
+                <Hover as="button" onClick={() => addItem('education', { id: genId(), school: '', degree: '', start: '', end: '', extraDetails: [] })} style={addBtn} hoverStyle={addBtnHover}>+ Add education</Hover>
               </div>
             )}
 
@@ -812,9 +813,9 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             {s.step === 4 && (
               <div>
                 {s.skillGroups.map((it, i) => (
-                  <SkillCard key={i} item={it} drag={makeDrag('skillGroups', i)} remove={() => removeItem('skillGroups', i)} update={(f, v) => setItemField('skillGroups', i, f as string, v)} onCommit={() => commitTag(i)} onRemoveTag={(j) => removeTag(i, j)} onBackspace={() => backspaceTag(i)} />
+                  <SkillCard key={it.id} item={it} drag={makeDrag('skillGroups', i)} remove={() => removeItem('skillGroups', i)} update={(f, v) => setItemField('skillGroups', i, f as string, v)} onCommit={() => commitTag(i)} onRemoveTag={(j) => removeTag(i, j)} onBackspace={() => backspaceTag(i)} />
                 ))}
-                <Hover as="button" onClick={() => addItem('skillGroups', { label: '', items: [], draft: '' })} style={{ ...addBtn, marginTop: '6px' }} hoverStyle={addBtnHover}>+ Add category</Hover>
+                <Hover as="button" onClick={() => addItem('skillGroups', { id: genId(), label: '', items: [], draft: '' })} style={{ ...addBtn, marginTop: '6px' }} hoverStyle={addBtnHover}>+ Add category</Hover>
               </div>
             )}
           </div>

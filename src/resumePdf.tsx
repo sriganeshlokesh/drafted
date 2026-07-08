@@ -147,8 +147,8 @@ export function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paper
         {data.experience.length > 0 && (
           <View>
             <SectionHeading fz={fz}>Experience</SectionHeading>
-            {data.experience.map((x: Experience, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
+            {data.experience.map((x: Experience) => (
+              <View key={x.id} style={{ marginBottom: 6 }}>
                 <DatedHeader fz={fz}
                   left={<><Text style={{ fontWeight: 'bold' }}>{x.role}</Text>{x.company ? ` | ${x.company}` : ''}</>}
                   right={expDates(x)}
@@ -163,8 +163,8 @@ export function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paper
         {data.projects.length > 0 && (
           <View>
             <SectionHeading fz={fz}>Projects</SectionHeading>
-            {data.projects.map((x: Project, i) => (
-              <View key={i} style={{ marginBottom: 5 }}>
+            {data.projects.map((x: Project) => (
+              <View key={x.id} style={{ marginBottom: 5 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1 }}>
                   <Text style={{ flex: 1, paddingRight: 8, fontSize: 12 * fz, fontWeight: 'bold' }}>{x.name}</Text>
                   {x.link ? <Text style={{ fontFamily: 'CMU Typewriter', fontSize: 10.5 * fz, color: LINK }}>{x.link}</Text> : null}
@@ -180,10 +180,10 @@ export function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paper
         {data.education.length > 0 && (
           <View>
             <SectionHeading fz={fz}>Education</SectionHeading>
-            {data.education.map((x: Education, i) => {
+            {data.education.map((x: Education) => {
               const detail = x.extraDetails.filter((d) => d.value).map((d) => `${d.label}: ${d.value}`).join(' · ')
               return (
-                <View key={i} style={{ marginBottom: 4 }}>
+                <View key={x.id} style={{ marginBottom: 4 }}>
                   <DatedHeader fz={fz}
                     left={<Text style={{ fontWeight: 'bold' }}>{x.degree}</Text>}
                     right={[fmtMonth(x.start), fmtMonth(x.end)].filter(Boolean).join(' – ')}
@@ -202,8 +202,8 @@ export function ResumePdfDocument({ data, paperSize }: { data: ResumeData; paper
         {skillLines.length > 0 && (
           <View>
             <SectionHeading fz={fz}>Skills</SectionHeading>
-            {skillLines.map((g, i) => (
-              <Text key={i} style={{ marginBottom: 1 }}>
+            {skillLines.map((g) => (
+              <Text key={g.id} style={{ marginBottom: 1 }}>
                 <Text style={{ fontWeight: 'bold' }}>{g.label}</Text>: {g.items.join(', ')}
               </Text>
             ))}

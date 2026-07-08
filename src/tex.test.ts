@@ -141,7 +141,7 @@ describe('genTex — LaTeX escaping', () => {
   it('escapes % in text', () => {
     const tex = genTex({
       ...BASE,
-      skillGroups: [{ label: 'Coverage', items: ['100%'], draft: '' }],
+      skillGroups: [{ id: 'sg-cov', label: 'Coverage', items: ['100%'], draft: '' }],
     }, 'Letter')
     expect(tex).toContain('100\\%')
   })
@@ -176,6 +176,7 @@ describe('genTex — Summary section', () => {
 
 describe('genTex — Experience section', () => {
   const EXP = {
+    id: 'exp-1',
     company: 'Acme Corp',
     role: 'Software Engineer',
     employment: 'Full-time',
@@ -231,8 +232,8 @@ describe('genTex — Experience section', () => {
     const tex = genTex({
       ...BASE,
       experience: [
-        { ...EXP, role: 'Senior Engineer', company: 'Big Co' },
-        { ...EXP, role: 'Junior Engineer', company: 'Small Co' },
+        { ...EXP, id: 'exp-sr', role: 'Senior Engineer', company: 'Big Co' },
+        { ...EXP, id: 'exp-jr', role: 'Junior Engineer', company: 'Small Co' },
       ],
     }, 'Letter')
     expect(tex).toContain('Senior Engineer')
@@ -243,7 +244,7 @@ describe('genTex — Experience section', () => {
 })
 
 describe('genTex — Projects section', () => {
-  const PROJ = { name: 'MyApp', link: 'github.com/myapp', description: '', techStack: [], techStackDraft: '' }
+  const PROJ = { id: 'prj-1', name: 'MyApp', link: 'github.com/myapp', description: '', techStack: [], techStackDraft: '' }
 
   it('omits Projects section when list is empty', () => {
     expect(genTex(BASE, 'Letter')).not.toContain('\\section*{Projects}')
@@ -267,6 +268,7 @@ describe('genTex — Projects section', () => {
 
 describe('genTex — Education section', () => {
   const EDU = {
+    id: 'edu-1',
     school: 'State University',
     degree: 'B.S. Computer Science',
     start: '2015-08',
@@ -314,7 +316,7 @@ describe('genTex — Skills section', () => {
   it('omits Skills section when all groups are empty', () => {
     const tex = genTex({
       ...BASE,
-      skillGroups: [{ label: 'Languages', items: [], draft: '' }],
+      skillGroups: [{ id: 'sg-1', label: 'Languages', items: [], draft: '' }],
     }, 'Letter')
     expect(tex).not.toContain('\\section*{Skills}')
   })
@@ -322,7 +324,7 @@ describe('genTex — Skills section', () => {
   it('includes skill group label and items', () => {
     const tex = genTex({
       ...BASE,
-      skillGroups: [{ label: 'Languages', items: ['Go', 'Python', 'TypeScript'], draft: '' }],
+      skillGroups: [{ id: 'sg-1', label: 'Languages', items: ['Go', 'Python', 'TypeScript'], draft: '' }],
     }, 'Letter')
     expect(tex).toContain('\\section*{Skills}')
     expect(tex).toContain('Languages')
@@ -333,8 +335,8 @@ describe('genTex — Skills section', () => {
     const tex = genTex({
       ...BASE,
       skillGroups: [
-        { label: 'Languages', items: ['Go'], draft: '' },
-        { label: 'Tools', items: ['Docker', 'Kubernetes'], draft: '' },
+        { id: 'sg-1', label: 'Languages', items: ['Go'], draft: '' },
+        { id: 'sg-2', label: 'Tools', items: ['Docker', 'Kubernetes'], draft: '' },
       ],
     }, 'Letter')
     expect(tex).toContain('Languages')

@@ -6,6 +6,7 @@ import { hasResumeContent } from './resumeContent'
 // (summary, bullets, description) are sent as the HTML strings Tiptap produces.
 
 export interface EvaluationRequestExperience {
+  id: string
   company: string
   role: string
   employment: string
@@ -16,6 +17,7 @@ export interface EvaluationRequestExperience {
 }
 
 export interface EvaluationRequestProject {
+  id: string
   name: string
   link: string
   description: string
@@ -28,6 +30,7 @@ export interface EvaluationRequestEducationDetail {
 }
 
 export interface EvaluationRequestEducation {
+  id: string
   school: string
   degree: string
   start: string
@@ -36,6 +39,7 @@ export interface EvaluationRequestEducation {
 }
 
 export interface EvaluationRequestSkillGroup {
+  id: string
   label: string
   items: string[]
 }
@@ -138,6 +142,7 @@ export function toEvaluationRequest(resume: ResumeData, jobDescription: string):
       location: resume.location,
       summary: resume.summary,
       experience: resume.experience.map((e) => ({
+        id: e.id,
         company: e.company,
         role: e.role,
         employment: e.employment,
@@ -147,12 +152,14 @@ export function toEvaluationRequest(resume: ResumeData, jobDescription: string):
         bullets: e.bulletsText,
       })),
       projects: resume.projects.map((p) => ({
+        id: p.id,
         name: p.name,
         link: p.link,
         description: p.description,
         tech_stack: p.techStack,
       })),
       education: resume.education.map((ed) => ({
+        id: ed.id,
         school: ed.school,
         degree: ed.degree,
         start: ed.start,
@@ -160,6 +167,7 @@ export function toEvaluationRequest(resume: ResumeData, jobDescription: string):
         extra_details: ed.extraDetails.map((d) => ({ label: d.label, value: d.value })),
       })),
       skill_groups: resume.skillGroups.map((sg) => ({
+        id: sg.id,
         label: sg.label,
         items: sg.items,
       })),

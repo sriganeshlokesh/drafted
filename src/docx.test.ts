@@ -15,6 +15,7 @@ const BASE: ResumeData = {
   summary: '<p>Experienced engineer.</p>',
   experience: [
     {
+      id: 'exp-1',
       company: 'Acme Corp',
       role: 'Software Engineer',
       employment: 'Full-time',
@@ -24,9 +25,10 @@ const BASE: ResumeData = {
       bulletsText: '<ul><li>Built systems</li><li>Scaled them</li></ul>',
     },
   ],
-  projects: [{ name: 'MyApp', link: 'github.com/myapp', description: '<p>A cool app.</p>', techStack: [], techStackDraft: '' }],
+  projects: [{ id: 'prj-1', name: 'MyApp', link: 'github.com/myapp', description: '<p>A cool app.</p>', techStack: [], techStackDraft: '' }],
   education: [
     {
+      id: 'edu-1',
       school: 'State University',
       degree: 'B.S. Computer Science',
       start: '2015-08',
@@ -35,7 +37,7 @@ const BASE: ResumeData = {
     },
   ],
   skillGroups: [
-    { label: 'Languages', items: ['Go', 'Python'], draft: '' },
+    { id: 'sg-1', label: 'Languages', items: ['Go', 'Python'], draft: '' },
   ],
   step: 0,
   view: 'preview',

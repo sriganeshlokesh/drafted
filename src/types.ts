@@ -4,6 +4,8 @@ export type SaveState = 'saving' | 'saved'
 export type PaperSize = 'Letter' | 'A4'
 
 export interface Experience {
+  /** Opaque client-generated ID (see idFactory); round-tripped by the backend. */
+  id: string
   company: string
   role: string
   employment: string
@@ -14,6 +16,8 @@ export interface Experience {
 }
 
 export interface Project {
+  /** Opaque client-generated ID (see idFactory); round-tripped by the backend. */
+  id: string
   name: string
   link: string
   description: string
@@ -27,6 +31,8 @@ export interface EducationDetail {
 }
 
 export interface Education {
+  /** Opaque client-generated ID (see idFactory); round-tripped by the backend. */
+  id: string
   school: string
   degree: string
   start: string
@@ -35,6 +41,8 @@ export interface Education {
 }
 
 export interface SkillGroup {
+  /** Opaque client-generated ID (see idFactory); round-tripped by the backend. */
+  id: string
   label: string
   items: string[]
   draft: string

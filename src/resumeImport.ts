@@ -1,6 +1,7 @@
 import { normalizeResumeData } from './normalize'
 import { normalizeText, dehyphenate } from './textNormalize'
 import { extractPdfLines, type Line } from './pdfExtract'
+import { genId } from './idFactory'
 import type { Education, Experience, Project, ResumeData, SkillGroup } from './types'
 
 /**
@@ -251,7 +252,7 @@ function parseExperience(lines: Line[]): Experience[] {
   const startEntry = (headerText: string, dr: DateRange | null, boldTitle = false): Experience => {
     flushBullets()
     const e: Experience = {
-      company: '', role: '', employment: detectEmployment(headerText),
+      id: genId(), company: '', role: '', employment: detectEmployment(headerText),
       start: dr?.start ?? '', end: dr?.end ?? '', present: dr?.present ?? false, bulletsText: '',
     }
     entries.push(e)
@@ -326,7 +327,7 @@ function parseEducation(lines: Line[]): Education[] {
   const typicalGap = median(lines.map((l) => l.gapBefore).filter((g) => g > 0 && g < 900)) || 1
   const entries: Education[] = []
   const newEntry = (): Education => {
-    const e: Education = { school: '', degree: '', start: '', end: '', extraDetails: [] }
+    const e: Education = { id: genId(), school: '', degree: '', start: '', end: '', extraDetails: [] }
     entries.push(e)
     return e
   }
@@ -369,7 +370,7 @@ function parseProjects(lines: Line[]): Project[] {
     if (!t) continue
     const isBullet = BULLET.test(line.text)
     if (!isBullet && (!cur || line.gapBefore > typicalGap * 1.1 || (line.bold && /^[A-Z\d"'(]/.test(t)))) {
-      cur = { name: '', link: '', description: '', techStack: [], techStackDraft: '' }
+      cur = { id: genId(), name: '', link: '', description: '', techStack: [], techStackDraft: '' }
       lastLineEnded = false
       const link = t.match(URL)
       const isLink = !!link && /\/|github|gitlab|\.(io|com|dev|app|org|net)\b/i.test(link[0])
@@ -415,12 +416,12 @@ function parseSkills(lines: Line[]): SkillGroup[] {
     const m = t.match(/^([A-Za-z][A-Za-z0-9 &/+#-]{1,30}):\s*(.+)$/)
     if (m) {
       const items = splitItems(m[2])
-      if (items.length) groups.push({ label: m[1].trim(), items, draft: '' })
+      if (items.length) groups.push({ id: genId(), label: m[1].trim(), items, draft: '' })
     } else {
       loose.push(...splitItems(t))
     }
   }
-  if (loose.length) groups.push({ label: groups.length ? 'Other' : 'Skills', items: dedupe(loose), draft: '' })
+  if (loose.length) groups.push({ id: genId(), label: groups.length ? 'Other' : 'Skills', items: dedupe(loose), draft: '' })
   return groups.filter((g) => g.items.length)
 }
 
