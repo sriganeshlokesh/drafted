@@ -9,8 +9,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@react-pdf/renderer'],
   },
-  // Proxy the forged evaluation API in dev so browser requests stay same-origin
-  // (forged has no CORS middleware). The client calls the relative `/v1/...`.
+  // Proxy the forged API in dev so browser requests stay same-origin; the
+  // client calls the relative `/v1/...`. Production builds skip the proxy and
+  // set VITE_API_BASE_URL instead (forged serves CORS with an origin allow-list).
   server: {
     proxy: {
       '/v1': { target: 'http://localhost:8080', changeOrigin: true },

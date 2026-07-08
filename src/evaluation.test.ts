@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { EvaluationError, evaluateResume, toEvaluationRequest } from './evaluation'
-import type { EvaluationResponse } from './evaluation'
+import { EvaluationError, evaluateResume, reviseResume, toEvaluationRequest } from './evaluation'
+import type { EvaluationResponse, RevisionRequest, RevisionResponse } from './evaluation'
 import type { Education, Experience, Project, ResumeData, SkillGroup } from './types'
 
 const experience: Experience = {
@@ -115,5 +115,70 @@ describe('evaluateResume', () => {
     await expect(evaluateResume(RESUME, '   ')).rejects.toMatchObject({ code: 10002 })
     await expect(evaluateResume(EMPTY_RESUME, 'jd')).rejects.toMatchObject({ code: 10002 })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('reviseResume', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const params: RevisionRequest = {
+    job_description: 'Build great software',
+    suggestion: {
+      text: 'Tighten the bullet around outcomes',
+      section: 'experience',
+      dimension: 'impact_evidence',
+      estimated_lift: 6,
+      action: {
+        type: 'rewrite_field',
+        target: { section: 'experience', item_id: 'exp-1', field: 'bullets' },
+      },
+    },
+    target: {
+      field: 'bullets',
+      content: '<ul><li>Shipped things</li></ul>',
+      context: { company: 'Acme', role: 'Engineer' },
+    },
+  }
+
+  it('POSTs to /v1/revisions with the suggestion echoed verbatim', async () => {
+    const body: RevisionResponse = {
+      status: 'ok',
+      changes: [{
+        target: { section: 'experience', item_id: 'exp-1', field: 'bullets' },
+        before: '<ul><li>Shipped things</li></ul>',
+        after: '<ul><li>Shipped meaningful things</li></ul>',
+        rationale: 'Tightened the verb.',
+      }],
+      warnings: [],
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200, json: () => Promise.resolve(body),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await reviseResume(params)
+
+    expect(result).toEqual(body)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/v1/revisions')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual(params)
+  })
+
+  it('maps the 30003 envelope to the friendly guardrail message', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 503, json: () => Promise.resolve({ code: 30003, message: 'revision service unavailable' }),
+    }))
+
+    await expect(reviseResume(params)).rejects.toMatchObject({
+      name: 'EvaluationError', code: 30003, status: 503,
+    })
+    await expect(reviseResume(params)).rejects.toThrow(/safe edit/i)
+  })
+
+  it('wraps a network failure in an EvaluationError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    await expect(reviseResume(params)).rejects.toBeInstanceOf(EvaluationError)
   })
 })

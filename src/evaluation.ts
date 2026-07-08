@@ -91,6 +91,49 @@ export interface EvaluationSuggestion {
   dimension: string
   /** Estimated score points gained if applied. */
   estimated_lift: number
+  /** Present when the suggestion is one-click applicable; absent = display-only. */
+  action?: {
+    type: 'rewrite_field'
+    target: RevisionTarget
+  }
+}
+
+// ── Revision DTOs (Phase 1 apply loop) ────────────────────────────────────
+// Mirror forged/api/dto/revision.go (snake_case). Valid Phase-1 targets:
+// summary/summary (item_id empty), experience/bullets, projects/description.
+
+/** Where a rewrite lands. `item_id` is the stable item id ("" for summary). */
+export interface RevisionTarget {
+  section: string
+  item_id: string
+  field: string
+}
+
+/** One proposed edit: never a mutated résumé — the user is the final gate. */
+export interface RevisionChange {
+  /** Echoed from `suggestion.action.target` so the client re-resolves on accept. */
+  target: RevisionTarget
+  before: string
+  after: string
+  rationale: string
+}
+
+export interface RevisionResponse {
+  status: string
+  changes: RevisionChange[]
+  warnings: string[]
+}
+
+/** Request body for `POST /v1/revisions` — the target slice, never the full résumé. */
+export interface RevisionRequest {
+  job_description: string
+  /** The evaluation suggestion echoed back verbatim. */
+  suggestion: EvaluationSuggestion
+  target: {
+    field: string
+    content: string
+    context?: { company?: string; role?: string; name?: string }
+  }
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────
@@ -108,9 +151,13 @@ const FRIENDLY_MESSAGES: Record<number, string> = {
   10003: 'Too many requests — wait a moment and try again.',
   30001: 'Something went wrong on the server. Please try again.',
   30002: 'The evaluation service is temporarily unavailable. Please try again shortly.',
+  30003: "Couldn't generate a safe edit right now — try again in a moment.",
 }
 
-/** Error thrown by {@link evaluateResume}; carries the backend code + HTTP status when available. */
+/**
+ * Error thrown by {@link evaluateResume} and {@link reviseResume}; carries the
+ * backend code + HTTP status when available.
+ */
 export class EvaluationError extends Error {
   code?: number
   status?: number
@@ -218,15 +265,47 @@ export async function evaluateResume(
     )
   }
 
-  if (!res.ok) {
-    const envelope = (await res.json().catch(() => null)) as ApiErrorEnvelope | null
-    const code = envelope?.code
-    const message =
-      (code != null && FRIENDLY_MESSAGES[code]) ||
-      envelope?.message ||
-      `Evaluation failed (HTTP ${res.status}).`
-    throw new EvaluationError(message, { code, status: res.status })
-  }
+  if (!res.ok) throw await toApiError(res, `Evaluation failed (HTTP ${res.status}).`)
 
   return (await res.json()) as EvaluationResponse
+}
+
+/**
+ * POSTs a revision request (the target slice + the suggestion echoed verbatim)
+ * to forged's `/v1/revisions` and returns the proposed change. Throws
+ * {@link EvaluationError} on HTTP or network failure. Pass an
+ * {@link AbortSignal} to cancel in-flight requests.
+ */
+export async function reviseResume(
+  params: RevisionRequest,
+  signal?: AbortSignal,
+): Promise<RevisionResponse> {
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}/v1/revisions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal,
+    })
+  } catch (err) {
+    if ((err as Error)?.name === 'AbortError') {
+      throw new EvaluationError('Revision cancelled.')
+    }
+    throw new EvaluationError(
+      "Couldn't reach the revision service. Check your connection and that the server is running.",
+    )
+  }
+
+  if (!res.ok) throw await toApiError(res, `Revision failed (HTTP ${res.status}).`)
+
+  return (await res.json()) as RevisionResponse
+}
+
+/** Maps a non-2xx response to an {@link EvaluationError} via the shared envelope + friendly copy. */
+async function toApiError(res: Response, fallback: string): Promise<EvaluationError> {
+  const envelope = (await res.json().catch(() => null)) as ApiErrorEnvelope | null
+  const code = envelope?.code
+  const message = (code != null && FRIENDLY_MESSAGES[code]) || envelope?.message || fallback
+  return new EvaluationError(message, { code, status: res.status })
 }
