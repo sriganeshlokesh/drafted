@@ -195,6 +195,13 @@ button:disabled { opacity: .35; cursor: default; }
 .rich-editor .tiptap li { margin: 0 0 2px; }
 .rich-editor .tiptap li:last-child { margin-bottom: 0; }
 
+/* Read-only rich-text HTML in the revise diff modal (same rhythm as Tiptap) */
+.revise-html p { margin: 0 0 4px; }
+.revise-html p:last-child { margin-bottom: 0; }
+.revise-html ul, .revise-html ol { margin: 0; padding-left: 18px; }
+.revise-html li { margin: 0 0 2px; }
+.revise-html li:last-child { margin-bottom: 0; }
+
 /* Dark mode toggle visibility by viewport */
 .dark-toggle-mobile { display: none; }
 @media (max-width: 767px) {

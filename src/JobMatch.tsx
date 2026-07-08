@@ -1,8 +1,12 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Hover } from './Hover'
-import type { EvaluationResponse, EvaluationSuggestion } from './evaluation'
+import { EvaluationError, reviseResume } from './evaluation'
+import type { EvaluationResponse, EvaluationSuggestion, RevisionChange } from './evaluation'
+import type { ResumeData } from './types'
 import { labelStyle } from './styles'
 import { DIM_SHADES, MISSED_FILL, matchBand, pointsLeft, relativeTime, sectionTarget, shortDimLabel } from './matchScore'
+import { resolveTarget, suggestionKey } from './revisionTarget'
+import { ReviseModal } from './ReviseModal'
 
 export interface JobMatchModeProps {
   jobDescription: string
@@ -16,12 +20,16 @@ export interface JobMatchModeProps {
   hasContent: boolean
   isMobile: boolean
   mobilePane: 'edit' | 'preview'
+  /** Current résumé state — actionable suggestions resolve their targets against it. */
+  resume: ResumeData
   onJdChange: (value: string) => void
   onJdModeChange: (mode: 'link' | 'paste') => void
   onRun: () => void
   onSelectDim: (key: string) => void
   onJumpToSection: (step: number) => void
   onBack: () => void
+  /** Called when the user accepts a previewed change in the diff modal. */
+  onApply: (change: RevisionChange) => void
 }
 
 // ── Shared style tokens ─────────────────────────────────────────────────────
@@ -270,8 +278,73 @@ function HighlightsCard({ strengths, gaps }: { strengths: string[]; gaps: string
   )
 }
 
-function SuggestedEditsCard({ suggestions, onJumpToSection }: { suggestions: EvaluationSuggestion[]; onJumpToSection: (step: number) => void }) {
+/** Transient per-row apply state; `applied`/`stale` are derived, not stored. */
+type RowState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+
+function SuggestedEditsCard({ suggestions, resume, jobDescription, onJumpToSection, onApply }: {
+  suggestions: EvaluationSuggestion[]
+  resume: ResumeData
+  jobDescription: string
+  onJumpToSection: (step: number) => void
+  onApply: (change: RevisionChange) => void
+}) {
+  const [rows, setRows] = useState<Record<string, RowState>>({})
+  const [preview, setPreview] = useState<{ key: string; change: RevisionChange } | null>(null)
+  // One revise call in flight at a time — every other Apply button is disabled meanwhile.
+  const [inFlightKey, setInFlightKey] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  // A new evaluation replaces the suggestion list — drop all transient row state.
+  useEffect(() => {
+    abortRef.current?.abort()
+    setRows({})
+    setPreview(null)
+    setInFlightKey(null)
+  }, [suggestions])
+  useEffect(() => () => abortRef.current?.abort(), [])
+
   if (!suggestions.length) return null
+
+  const setRow = (key: string, row: RowState) => setRows((r) => ({ ...r, [key]: row }))
+
+  const requestRevision = async (s: EvaluationSuggestion) => {
+    const action = s.action
+    if (!action || inFlightKey) return
+    const resolved = resolveTarget(resume, action.target)
+    if (!resolved) return // stale — button is disabled, belt and braces
+    const key = suggestionKey(s)
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    setInFlightKey(key)
+    setRow(key, { status: 'loading' })
+    try {
+      const res = await reviseResume({
+        job_description: jobDescription,
+        suggestion: s, // echoed verbatim per the wire contract
+        target: { field: action.target.field, content: resolved.content, context: resolved.context },
+      }, ctrl.signal)
+      if (ctrl.signal.aborted) return
+      const change = res.changes[0]
+      if (change) {
+        setRow(key, { status: 'idle' })
+        setPreview({ key, change })
+      } else {
+        setRow(key, { status: 'error', message: 'No edit came back — try again.' })
+      }
+    } catch (err) {
+      if (ctrl.signal.aborted) return
+      setRow(key, {
+        status: 'error',
+        message: err instanceof EvaluationError ? err.message : 'Something went wrong — try again.',
+      })
+    } finally {
+      setInFlightKey((cur) => (cur === key ? null : cur))
+    }
+  }
+
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', marginBottom: '14px' }}>
@@ -279,29 +352,62 @@ function SuggestedEditsCard({ suggestions, onJumpToSection }: { suggestions: Eva
         <span style={{ fontSize: '12px', color: 'var(--c-text-muted, #9b9a97)' }}>Est. lift · jump straight to the section</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {suggestions.map((s, i) => {
+        {suggestions.map((s) => {
+          const key = suggestionKey(s)
           const target = sectionTarget(s.section)
+          const resolved = s.action ? resolveTarget(resume, s.action.target) : null
+          const stale = !!s.action && !resolved
+          const row = rows[key] ?? { status: 'idle' }
+          const loading = row.status === 'loading'
+          const applyDisabled = stale || inFlightKey !== null
           return (
-            <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              {s.estimated_lift > 0 && (
-                <span style={{ flex: 'none', marginTop: '1px', fontSize: '12px', fontWeight: 700, color: '#fff', background: '#e0901d', borderRadius: '20px', padding: '3px 10px', whiteSpace: 'nowrap' }}>+{s.estimated_lift} pts</span>
+            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                {s.estimated_lift > 0 && (
+                  <span style={{ flex: 'none', marginTop: '1px', fontSize: '12px', fontWeight: 700, color: '#fff', background: '#e0901d', borderRadius: '20px', padding: '3px 10px', whiteSpace: 'nowrap' }}>+{s.estimated_lift} pts</span>
+                )}
+                <span style={{ flex: 1, fontSize: '14px', lineHeight: 1.5, color: 'var(--c-text, #1a1a2e)' }}>{s.text}</span>
+                {s.action && (
+                  <Hover
+                    as="button"
+                    onClick={applyDisabled ? undefined : () => requestRevision(s)}
+                    disabled={applyDisabled}
+                    title={stale ? 'Your resume changed here — re-run the match' : undefined}
+                    style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'var(--accent, #213885)', border: 'none', borderRadius: '8px', padding: '5px 12px', cursor: applyDisabled ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: applyDisabled && !loading ? 0.45 : 1 }}
+                    hoverStyle={applyDisabled ? {} : { filter: 'brightness(1.08)' }}
+                  >
+                    {loading ? <><Spinner size={12} light /> Applying…</> : row.status === 'error' ? 'Retry' : 'Apply'}
+                  </Hover>
+                )}
+                {target && (
+                  <Hover as="button" onClick={() => onJumpToSection(target.step)} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600, color: 'var(--accent, #213885)', background: 'var(--c-accent-tint, #efeaf3)', border: '1px solid var(--c-accent-tint-border, #d9cbe4)', borderRadius: '8px', padding: '5px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }} hoverStyle={{ background: 'var(--c-accent-tint-hover, #e7def0)' }}>
+                    {target.label} →
+                  </Hover>
+                )}
+              </div>
+              {stale && (
+                <div style={{ fontSize: '12.5px', color: 'var(--c-text-muted, #9b9a97)' }}>Your resume changed here — re-run the match</div>
               )}
-              <span style={{ flex: 1, fontSize: '14px', lineHeight: 1.5, color: 'var(--c-text, #1a1a2e)' }}>{s.text}</span>
-              {target && (
-                <Hover as="button" onClick={() => onJumpToSection(target.step)} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600, color: 'var(--accent, #213885)', background: 'var(--c-accent-tint, #efeaf3)', border: '1px solid var(--c-accent-tint-border, #d9cbe4)', borderRadius: '8px', padding: '5px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }} hoverStyle={{ background: 'var(--c-accent-tint-hover, #e7def0)' }}>
-                  {target.label} →
-                </Hover>
+              {row.status === 'error' && (
+                <div style={{ fontSize: '12.5px', color: '#b23b2e' }}>{row.message}</div>
               )}
             </div>
           )
         })}
       </div>
+      {preview && (
+        <ReviseModal
+          change={preview.change}
+          onAccept={() => { onApply(preview.change); setPreview(null) }}
+          onDiscard={() => setPreview(null)}
+        />
+      )}
     </div>
   )
 }
 
 function MatchReport(props: JobMatchModeProps) {
-  const { result, previousScore, evaluatedAt, loading, error, selectedDimKey, jobDescription, hasContent, onRun, onSelectDim, onJumpToSection } = props
+  const { result, previousScore, evaluatedAt, loading, error, selectedDimKey, jobDescription, hasContent, resume, onRun, onSelectDim, onJumpToSection, onApply } = props
   const canRun = !!jobDescription.trim() && hasContent && !loading
 
   return (
@@ -344,7 +450,7 @@ function MatchReport(props: JobMatchModeProps) {
           <div style={{ opacity: loading ? 0.55 : 1, transition: 'opacity .15s', maxWidth: '760px', margin: '0 auto' }}>
             <MatchScoreCard result={result} previousScore={previousScore} evaluatedAt={evaluatedAt} selectedDimKey={selectedDimKey} onSelectDim={onSelectDim} />
             <HighlightsCard strengths={result.strengths} gaps={result.gaps} />
-            <SuggestedEditsCard suggestions={result.suggestions} onJumpToSection={onJumpToSection} />
+            <SuggestedEditsCard suggestions={result.suggestions} resume={resume} jobDescription={jobDescription} onJumpToSection={onJumpToSection} onApply={onApply} />
           </div>
         )}
       </div>

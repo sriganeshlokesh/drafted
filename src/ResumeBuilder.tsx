@@ -10,7 +10,8 @@ import { genId } from './idFactory'
 import { ImportModal, UploadIcon } from './ImportModal'
 import { importResume } from './resumeImport'
 import { hasResumeContent } from './resumeContent'
-import { evaluateResume, EvaluationError, type EvaluationResponse } from './evaluation'
+import { evaluateResume, EvaluationError, type EvaluationResponse, type RevisionChange } from './evaluation'
+import { applyChange } from './revisionTarget'
 import { JobMatchMode } from './JobMatch'
 import { ResumePdfDocument } from './resumePdf'
 import type { Format, ListKey, PaperSize, ResumeData, SaveState } from './types'
@@ -311,6 +312,38 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
     }
   }
 
+  // ── Suggestion apply + undo ────────────────────────────────────────────
+  // Snapshots of the persisted résumé slice, pushed BEFORE each apply so Undo
+  // restores wholesale. In-memory only; capped so long sessions stay bounded.
+  const undoStack = useRef<ResumeData[]>([])
+  const [applyToastOpen, setApplyToastOpen] = useState(false)
+  const applyToastTimer = useRef<ReturnType<typeof setTimeout>>()
+
+  /** Deep-cloned copy of the persisted résumé slice (reuses the autosave snapshot). */
+  const cloneResumeData = (s: State): ResumeData => JSON.parse(snapshot(s)) as ResumeData
+
+  const handleSuggestionApply = (change: RevisionChange) => {
+    // Re-resolve the id-addressed target against CURRENT state; a vanished
+    // target means the résumé changed since the preview — write nothing.
+    const op = applyChange(state, change)
+    if (!op) return
+    undoStack.current.push(cloneResumeData(state))
+    if (undoStack.current.length > 20) undoStack.current.shift()
+    if (op.kind === 'patch') patch(op.value as Partial<State>)
+    else setItemField(op.list, op.index, op.field, op.value)
+    clearTimeout(applyToastTimer.current)
+    setApplyToastOpen(true)
+    applyToastTimer.current = setTimeout(() => setApplyToastOpen(false), 6000)
+  }
+
+  const undoLastApply = () => {
+    const snap = undoStack.current.pop()
+    if (!snap) return
+    patch(snap as Partial<State>) // autosave then persists the restored slice
+    clearTimeout(applyToastTimer.current)
+    setApplyToastOpen(false)
+  }
+
   const runImport = async (file: File) => {
     const ext = (file.name.split('.').pop() || '').toLowerCase()
     if (!['pdf', 'txt', 'tex', 'md', 'markdown'].includes(ext)) {
@@ -454,6 +487,7 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
     clearTimeout(t1.current)
     clearTimeout(t2.current)
     clearTimeout(saveTimer.current)
+    clearTimeout(applyToastTimer.current)
     evalAbort.current?.abort()
   }, [])
 
@@ -722,12 +756,14 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             hasContent={hasContent}
             isMobile={isMobile}
             mobilePane={s.mobilePane}
+            resume={s}
             onJdChange={(v) => patch({ jobDescription: v })}
             onJdModeChange={(m) => patch({ jdInputMode: m })}
             onRun={runMatch}
             onSelectDim={(k) => patch({ evalDimKey: k })}
             onJumpToSection={(step) => patch({ step, mode: 'editor' })}
             onBack={() => patch({ mode: 'editor' })}
+            onApply={handleSuggestionApply}
           />
         ) : (
           <>
@@ -921,6 +957,14 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
       {s.toast && (
         <div style={{ position: 'fixed', bottom: '22px', left: '50%', transform: 'translateX(-50%)', background: 'var(--c-toast-bg, #2c2c34)', color: 'var(--c-toast-text, #fff)', fontSize: '13.5px', fontWeight: 500, padding: '11px 18px', borderRadius: '9px', boxShadow: '0 8px 30px rgba(0,0,0,.25)', display: 'flex', alignItems: 'center', gap: '9px', animation: 'pop .2s ease', zIndex: 20 }}>
           <span style={{ color: 'var(--accent2,#893172)', fontSize: '15px' }}>✓</span> {fileName}.{ext} downloaded
+        </div>
+      )}
+
+      {/* APPLY TOAST */}
+      {applyToastOpen && (
+        <div style={{ position: 'fixed', bottom: '22px', left: '50%', transform: 'translateX(-50%)', background: 'var(--c-toast-bg, #2c2c34)', color: 'var(--c-toast-text, #fff)', fontSize: '13.5px', fontWeight: 500, padding: '11px 18px', borderRadius: '9px', boxShadow: '0 8px 30px rgba(0,0,0,.25)', display: 'flex', alignItems: 'center', gap: '9px', animation: 'pop .2s ease', zIndex: 21 }}>
+          <span style={{ color: 'var(--accent2,#893172)', fontSize: '15px' }}>✓</span> Edit applied —
+          <button onClick={undoLastApply} style={{ background: 'none', border: 'none', color: 'var(--c-toast-text, #fff)', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Undo</button>
         </div>
       )}
 
