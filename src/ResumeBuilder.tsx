@@ -24,6 +24,7 @@ interface State extends ResumeData {
   toast: boolean
   menuOpen: boolean
   resetDialogOpen: boolean
+  overflowOpen: boolean
   saveState: SaveState
   mobilePane: 'edit' | 'preview'
   importOpen: boolean
@@ -58,6 +59,7 @@ const initialState: State = {
   fontScale: 1,
   menuOpen: false,
   resetDialogOpen: false,
+  overflowOpen: false,
   saveState: 'saved',
   mobilePane: 'edit',
   importOpen: false,
@@ -554,36 +556,38 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
             )}
             <span style={{ fontSize: '12px', fontWeight: 600, color: completeColor }}>{completePct}%</span>
           </span>
-          {/* Dark mode toggle — mobile only (desktop uses fixed button) */}
-          <Hover
-            as="button"
-            onClick={toggleDark}
-            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="dark-toggle-mobile"
-            style={{ alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', border: '1px solid var(--c-border-subtle, #ededec)', borderRadius: '8px', background: 'var(--c-bg-subtle, #fafaf9)', cursor: 'pointer', fontSize: '15px', outline: 'none' }}
-            hoverStyle={{ background: 'var(--c-bg-muted, #f0eff2)' }}
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </Hover>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '13px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '13px' }}>
+          {isMobile && (
+            <span title={s.saveState === 'saving' ? 'Saving…' : 'All changes saved'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', flex: 'none' }}>
+              {s.saveState === 'saving' ? (
+                <span style={{ width: '13px', height: '13px', border: '2px solid var(--c-border, #d8d6e8)', borderTopColor: 'var(--c-text-muted, #9b9a97)', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
+              ) : (
+                <span style={{ color: 'var(--accent2)', fontSize: '14px' }}>✓</span>
+              )}
+            </span>
+          )}
           <Hover as="button" onClick={() => patch({ mode: s.mode === 'match' ? 'editor' : 'match' })} onMouseDown={(e) => e.preventDefault()} title="Match your résumé to a job description" style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: isMobile ? '7px 9px' : '7px 12px', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'var(--accent, #213885)', border: 'none', borderRadius: '8px', cursor: 'pointer', outline: 'none', boxShadow: s.mode === 'match' ? '0 0 0 2px var(--c-accent-tint-border, #d9cbe4)' : 'none' }} hoverStyle={{ filter: 'brightness(1.1)' }}>
             <span style={{ fontSize: '14px' }}>◎</span>{!isMobile && ' Match'}
             {s.evalResult && (
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,.22)', borderRadius: '6px', padding: '1px 7px', letterSpacing: '.01em' }}>{s.evalResult.score}</span>
             )}
           </Hover>
-          <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#213885)', background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}>
-            <UploadIcon />{!isMobile && 'Import'}
+          {!isMobile && (
+          <Hover as="button" onClick={() => patch({ importOpen: true, importError: null })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '5px 12px', fontSize: '13px', fontWeight: 500, color: 'var(--accent,#213885)', background: 'var(--c-import-bg, #efedfb)', border: '1px solid var(--c-import-border, #ddd8f7)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-import-hover-bg, #e6e2fb)', borderColor: 'var(--c-import-border, #c9c1f2)' }}>
+            <UploadIcon /> Import
           </Hover>
-          <div style={{ position: 'relative' }}>
-            <Hover as="button" onClick={() => patch({ resetDialogOpen: !s.resetDialogOpen })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: isMobile ? '6px' : '5px 12px', width: isMobile ? '34px' : 'auto', height: isMobile ? '34px' : 'auto', fontSize: '13px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px solid var(--c-reset-border, #d5d4d8)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)', borderColor: 'var(--c-reset-border, #bbb)' }}>
-              <span>↺</span>{!isMobile && ' Reset'}
+          )}
+          <div style={isMobile ? { display: 'contents' } : { position: 'relative' }}>
+            {!isMobile && (
+            <Hover as="button" onClick={() => patch({ resetDialogOpen: !s.resetDialogOpen })} onMouseDown={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '5px 12px', fontSize: '13px', fontWeight: 500, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px solid var(--c-reset-border, #d5d4d8)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)', borderColor: 'var(--c-reset-border, #bbb)' }}>
+              <span>↺</span> Reset
             </Hover>
+            )}
             {s.resetDialogOpen && (
               <>
                 <div onClick={() => patch({ resetDialogOpen: false })} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, background: 'var(--c-bg-elevated, #fff)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,.16)', border: '1px solid var(--c-border, #e5e4e8)', padding: '8px', zIndex: 41, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px', whiteSpace: 'nowrap' }}>
+                <div style={{ ...(isMobile ? { position: 'fixed', top: '52px', right: '12px' } : { position: 'absolute', top: 'calc(100% + 8px)', left: 0 }), background: 'var(--c-bg-elevated, #fff)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,.16)', border: '1px solid var(--c-border, #e5e4e8)', padding: '8px', zIndex: 41, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px', whiteSpace: 'nowrap' }}>
                   <div style={{ padding: '4px 6px 8px', borderBottom: '1px solid var(--c-border-subtle, #f0eff2)', marginBottom: '4px' }}>
                     <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: 'var(--c-text, #1a1a1a)' }}>Reset?</p>
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--c-text-muted, #999)', lineHeight: 1.4 }}>This can't be undone.</p>
@@ -601,13 +605,15 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
               </>
             )}
           </div>
+          {!isMobile && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--c-text-muted, #9b9a97)' }}>
             {s.saveState === 'saving' ? (
               <span style={{ width: '11px', height: '11px', border: '2px solid var(--c-border, #d8d6e8)', borderTopColor: 'var(--c-text-muted, #9b9a97)', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
             ) : (
-              <><span style={{ color: 'var(--accent2)' }}>✓</span>{!isMobile && ' Saved'}</>
+              <><span style={{ color: 'var(--accent2)' }}>✓</span> Saved</>
             )}
           </span>
+          )}
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'inline-flex', alignItems: 'stretch', background: 'var(--accent)', borderRadius: '8px', overflow: 'hidden' }}>
               <Hover as="button" onClick={download} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 10px 7px 14px', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'transparent', border: 'none', cursor: 'pointer' }} hoverStyle={{ filter: 'brightness(1.12)' }}>
@@ -639,6 +645,29 @@ export default function ResumeBuilder({ paperSize = 'A4' }: Props) {
               </>
             )}
           </div>
+          {isMobile && (
+            <div style={{ position: 'relative' }}>
+              <Hover as="button" onClick={() => patch({ overflowOpen: !s.overflowOpen })} onMouseDown={(e) => e.preventDefault()} title="More actions" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', fontSize: '18px', fontWeight: 700, lineHeight: 1, color: 'var(--c-text-subtle, #6b6a72)', background: 'var(--c-reset-bg, #f0eff2)', border: '1px solid var(--c-reset-border, #d5d4d8)', borderRadius: '8px', cursor: 'pointer', outline: 'none' }} hoverStyle={{ background: 'var(--c-reset-hover-bg, #e5e4e8)', borderColor: 'var(--c-reset-border, #bbb)' }}>
+                ⋯
+              </Hover>
+              {s.overflowOpen && (
+                <>
+                  <div onClick={() => patch({ overflowOpen: false })} style={{ position: 'fixed', inset: 0, zIndex: 18 }} />
+                  <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: '210px', background: 'var(--c-bg-elevated, #fff)', border: '1px solid var(--c-border-subtle, #e6e5e1)', borderRadius: '12px', boxShadow: '0 12px 36px rgba(0,0,0,.15)', padding: '6px', zIndex: 20 }}>
+                    <Hover onClick={() => patch({ importOpen: true, importError: null, overflowOpen: false })} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: 'var(--c-text, #2c2c34)' }} hoverStyle={{ background: 'var(--c-accent-tint, #f3f2fc)' }}>
+                      <UploadIcon /> Import
+                    </Hover>
+                    <Hover onClick={() => patch({ resetDialogOpen: true, overflowOpen: false })} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: 'var(--c-text, #2c2c34)' }} hoverStyle={{ background: 'var(--c-accent-tint, #f3f2fc)' }}>
+                      <span style={{ width: '16px', textAlign: 'center' }}>↺</span> Reset…
+                    </Hover>
+                    <Hover onClick={() => { toggleDark(); patch({ overflowOpen: false }) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: 'var(--c-text, #2c2c34)' }} hoverStyle={{ background: 'var(--c-accent-tint, #f3f2fc)' }}>
+                      <span style={{ width: '16px', textAlign: 'center' }}>{darkMode ? '☀️' : '🌙'}</span> {darkMode ? 'Light mode' : 'Dark mode'}
+                    </Hover>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
