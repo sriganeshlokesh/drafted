@@ -28,8 +28,10 @@ export interface JobMatchModeProps {
   onSelectDim: (key: string) => void
   onJumpToSection: (step: number) => void
   onBack: () => void
+  /** suggestionKey()s already applied — rows render as claimed and pointsLeft excludes their lift. */
+  appliedKeys: string[]
   /** Called when the user accepts a previewed change in the diff modal. */
-  onApply: (change: RevisionChange) => void
+  onApply: (change: RevisionChange, key: string) => void
 }
 
 // ── Shared style tokens ─────────────────────────────────────────────────────
@@ -173,16 +175,17 @@ function JobMatchInputPanel(props: JobMatchModeProps) {
 }
 
 // ── Right: match report ─────────────────────────────────────────────────────
-function MatchScoreCard({ result, previousScore, evaluatedAt, selectedDimKey, onSelectDim }: {
+function MatchScoreCard({ result, previousScore, evaluatedAt, selectedDimKey, appliedKeys, onSelectDim }: {
   result: EvaluationResponse
   previousScore: number | null
   evaluatedAt: number | null
   selectedDimKey: string | null
+  appliedKeys: string[]
   onSelectDim: (key: string) => void
 }) {
   const { score, summary, dimensions } = result
   const band = matchBand(score)
-  const left = pointsLeft(score)
+  const left = pointsLeft(score, result.suggestions, new Set(appliedKeys))
   const delta = previousScore != null ? score - previousScore : null
   const sel = dimensions.find((d) => d.key === selectedDimKey) ?? dimensions[0]
 
@@ -284,13 +287,15 @@ type RowState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
 
-function SuggestedEditsCard({ suggestions, resume, jobDescription, onJumpToSection, onApply }: {
+function SuggestedEditsCard({ suggestions, resume, jobDescription, appliedKeys, onJumpToSection, onApply }: {
   suggestions: EvaluationSuggestion[]
   resume: ResumeData
   jobDescription: string
+  appliedKeys: string[]
   onJumpToSection: (step: number) => void
-  onApply: (change: RevisionChange) => void
+  onApply: (change: RevisionChange, key: string) => void
 }) {
+  const appliedSet = new Set(appliedKeys)
   const [rows, setRows] = useState<Record<string, RowState>>({})
   const [preview, setPreview] = useState<{ key: string; change: RevisionChange } | null>(null)
   // One revise call in flight at a time — every other Apply button is disabled meanwhile.
@@ -354,9 +359,11 @@ function SuggestedEditsCard({ suggestions, resume, jobDescription, onJumpToSecti
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {suggestions.map((s) => {
           const key = suggestionKey(s)
+          const applied = appliedSet.has(key)
           const target = sectionTarget(s.section)
           const resolved = s.action ? resolveTarget(resume, s.action.target) : null
-          const stale = !!s.action && !resolved
+          // An applied row is claimed, not stale — its content changed BECAUSE we applied.
+          const stale = !applied && !!s.action && !resolved
           const row = rows[key] ?? { status: 'idle' }
           const loading = row.status === 'loading'
           const applyDisabled = stale || inFlightKey !== null
@@ -366,8 +373,11 @@ function SuggestedEditsCard({ suggestions, resume, jobDescription, onJumpToSecti
                 {s.estimated_lift > 0 && (
                   <span style={{ flex: 'none', marginTop: '1px', fontSize: '12px', fontWeight: 700, color: '#fff', background: '#e0901d', borderRadius: '20px', padding: '3px 10px', whiteSpace: 'nowrap' }}>+{s.estimated_lift} pts</span>
                 )}
-                <span style={{ flex: 1, fontSize: '14px', lineHeight: 1.5, color: 'var(--c-text, #1a1a2e)' }}>{s.text}</span>
-                {s.action && (
+                <span style={{ flex: 1, fontSize: '14px', lineHeight: 1.5, color: applied ? 'var(--c-text-muted, #9b9a97)' : 'var(--c-text, #1a1a2e)', textDecoration: applied ? 'line-through' : 'none' }}>{s.text}</span>
+                {s.action && applied && (
+                  <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 700, color: '#1d7a4f', background: 'rgba(29,122,79,.10)', border: '1px solid rgba(29,122,79,.30)', borderRadius: '8px', padding: '5px 11px', whiteSpace: 'nowrap' }}>✓ Applied</span>
+                )}
+                {s.action && !applied && (
                   <Hover
                     as="button"
                     onClick={applyDisabled ? undefined : () => requestRevision(s)}
@@ -398,7 +408,7 @@ function SuggestedEditsCard({ suggestions, resume, jobDescription, onJumpToSecti
       {preview && (
         <ReviseModal
           change={preview.change}
-          onAccept={() => { onApply(preview.change); setPreview(null) }}
+          onAccept={() => { onApply(preview.change, preview.key); setPreview(null) }}
           onDiscard={() => setPreview(null)}
         />
       )}
@@ -407,7 +417,7 @@ function SuggestedEditsCard({ suggestions, resume, jobDescription, onJumpToSecti
 }
 
 function MatchReport(props: JobMatchModeProps) {
-  const { result, previousScore, evaluatedAt, loading, error, selectedDimKey, jobDescription, hasContent, resume, onRun, onSelectDim, onJumpToSection, onApply } = props
+  const { result, previousScore, evaluatedAt, loading, error, selectedDimKey, jobDescription, hasContent, resume, appliedKeys, onRun, onSelectDim, onJumpToSection, onApply } = props
   const canRun = !!jobDescription.trim() && hasContent && !loading
 
   return (
@@ -448,9 +458,19 @@ function MatchReport(props: JobMatchModeProps) {
 
         {result && (
           <div style={{ opacity: loading ? 0.55 : 1, transition: 'opacity .15s', maxWidth: '760px', margin: '0 auto' }}>
-            <MatchScoreCard result={result} previousScore={previousScore} evaluatedAt={evaluatedAt} selectedDimKey={selectedDimKey} onSelectDim={onSelectDim} />
+            {appliedKeys.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', background: 'var(--c-accent-tint, #efeaf3)', border: '1px solid var(--c-accent-tint-border, #d9cbe4)', borderRadius: '12px', padding: '12px 16px', marginBottom: '18px' }}>
+                <span style={{ fontSize: '13.5px', lineHeight: 1.5, color: 'var(--c-text, #1a1a2e)' }}>
+                  You've applied {appliedKeys.length} edit{appliedKeys.length === 1 ? '' : 's'} — re-run the match to see your new score.
+                </span>
+                <Hover as="button" onClick={canRun ? onRun : undefined} disabled={!canRun} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'var(--accent, #213885)', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: canRun ? 'pointer' : 'default', opacity: canRun ? 1 : 0.45, whiteSpace: 'nowrap' }} hoverStyle={canRun ? { filter: 'brightness(1.08)' } : {}}>
+                  ↻ Re-run match
+                </Hover>
+              </div>
+            )}
+            <MatchScoreCard result={result} previousScore={previousScore} evaluatedAt={evaluatedAt} selectedDimKey={selectedDimKey} appliedKeys={appliedKeys} onSelectDim={onSelectDim} />
             <HighlightsCard strengths={result.strengths} gaps={result.gaps} />
-            <SuggestedEditsCard suggestions={result.suggestions} resume={resume} jobDescription={jobDescription} onJumpToSection={onJumpToSection} onApply={onApply} />
+            <SuggestedEditsCard suggestions={result.suggestions} resume={resume} jobDescription={jobDescription} appliedKeys={appliedKeys} onJumpToSection={onJumpToSection} onApply={onApply} />
           </div>
         )}
       </div>

@@ -1,6 +1,9 @@
 // Pure helpers for the Job Match report. Kept separate from JobMatch.tsx so the
 // scoring/formatting logic is unit-testable without pulling in React.
 
+import type { EvaluationSuggestion } from './evaluation'
+import { suggestionKey } from './revisionTarget'
+
 export interface MatchBand {
   label: string
   /** Inclusive lower bound of the band. */
@@ -20,9 +23,21 @@ export function matchBand(score: number): MatchBand {
   return BANDS.find((b) => score >= b.min) ?? BANDS[BANDS.length - 1]
 }
 
-/** Points still available — "N pts left on the table". */
-export function pointsLeft(score: number): number {
-  return Math.max(0, 100 - score)
+/**
+ * Points still available — "N pts left on the table". Suggestions the user has
+ * already applied (keyed by {@link suggestionKey}) count as claimed, so their
+ * estimated lift is excluded until the next evaluation refreshes the score.
+ */
+export function pointsLeft(
+  score: number,
+  suggestions: EvaluationSuggestion[] = [],
+  appliedKeys: ReadonlySet<string> = new Set(),
+): number {
+  const appliedLift = suggestions.reduce(
+    (sum, s) => (appliedKeys.has(suggestionKey(s)) ? sum + Math.max(0, s.estimated_lift || 0) : sum),
+    0,
+  )
+  return Math.max(0, 100 - score - appliedLift)
 }
 
 /** Compact relative time ("just now", "3 h ago"). `now` is injectable for tests. */

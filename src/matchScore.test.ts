@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { matchBand, pointsLeft, relativeTime, sectionTarget, shortDimLabel } from './matchScore'
+import { suggestionKey } from './revisionTarget'
+import type { EvaluationSuggestion } from './evaluation'
 
 describe('matchBand', () => {
   it.each([
@@ -21,6 +23,36 @@ describe('pointsLeft', () => {
     expect(pointsLeft(74)).toBe(26)
     expect(pointsLeft(100)).toBe(0)
     expect(pointsLeft(120)).toBe(0)
+  })
+
+  const sug = (text: string, lift: number, itemId = ''): EvaluationSuggestion => ({
+    text,
+    section: itemId ? 'experience' : 'summary',
+    dimension: '',
+    estimated_lift: lift,
+    action: {
+      type: 'rewrite_field',
+      target: itemId
+        ? { section: 'experience', item_id: itemId, field: 'bullets' }
+        : { section: 'summary', item_id: '', field: 'summary' },
+    },
+  })
+
+  it('excludes the estimated lift of applied suggestions', () => {
+    const a = sug('tighten summary', 4)
+    const b = sug('quantify bullet', 6, 'exp1')
+    expect(pointsLeft(70, [a, b], new Set([suggestionKey(b)]))).toBe(24) // 30 − 6
+  })
+
+  it('floors at 0 when applied lift exceeds the remaining gap', () => {
+    const b = sug('big win', 40, 'exp1')
+    expect(pointsLeft(90, [b], new Set([suggestionKey(b)]))).toBe(0)
+  })
+
+  it('ignores unapplied suggestions and treats negative lift as 0', () => {
+    const a = sug('meh', -3)
+    const b = sug('other', 5, 'exp2')
+    expect(pointsLeft(50, [a, b], new Set([suggestionKey(a)]))).toBe(50)
   })
 })
 
