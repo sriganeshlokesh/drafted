@@ -1,4 +1,5 @@
 import type { ResumeData } from './types'
+import { authFetch } from './auth/tokenStore'
 import { hasResumeContent } from './resumeContent'
 
 // ── Request DTOs ──────────────────────────────────────────────────────────
@@ -225,8 +226,10 @@ export function toEvaluationRequest(resume: ResumeData, jobDescription: string):
 // ── Client ────────────────────────────────────────────────────────────────
 
 // Empty in local dev: requests hit the relative `/v1/...`, which the Vite dev
-// server proxies to http://localhost:8080 (see vite.config.ts), keeping them
+// server proxies to http://localhost:8081 (see vite.config.ts), keeping them
 // same-origin. Set VITE_API_BASE_URL for non-proxied/production builds.
+// Requests go through authFetch, which attaches the keysmith access token and
+// retries once after a silent refresh on 401.
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
 /**
@@ -250,7 +253,7 @@ export async function evaluateResume(
 
   let res: Response
   try {
-    res = await fetch(`${API_BASE}/v1/evaluations`, {
+    res = await authFetch(`${API_BASE}/v1/evaluations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(toEvaluationRequest(resume, jobDescription)),
@@ -282,7 +285,7 @@ export async function reviseResume(
 ): Promise<RevisionResponse> {
   let res: Response
   try {
-    res = await fetch(`${API_BASE}/v1/revisions`, {
+    res = await authFetch(`${API_BASE}/v1/revisions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),

@@ -9,12 +9,20 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@react-pdf/renderer'],
   },
-  // Proxy the forged API in dev so browser requests stay same-origin; the
-  // client calls the relative `/v1/...`. Production builds skip the proxy and
-  // set VITE_API_BASE_URL instead (forged serves CORS with an origin allow-list).
+  // Proxy the backends in dev so browser requests stay same-origin (cookies
+  // included). Local port convention: keysmith (auth) on 8080, forged on 8081.
+  // Production builds skip the proxy and set VITE_API_BASE_URL /
+  // VITE_AUTH_BASE_URL instead (both services serve CORS allow-lists).
   server: {
     proxy: {
-      '/v1': { target: 'http://localhost:8080', changeOrigin: true },
+      '/v1': { target: 'http://localhost:8081', changeOrigin: true },
+      '/auth': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        // /auth/complete is an SPA route (OAuth landing), not a keysmith
+        // endpoint — serve the app shell for it.
+        bypass: (req) => (req.url?.startsWith('/auth/complete') ? '/index.html' : undefined),
+      },
     },
   },
   test: {

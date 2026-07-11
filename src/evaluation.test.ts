@@ -1,7 +1,18 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setSession } from './auth/tokenStore'
 import { EvaluationError, evaluateResume, reviseResume, toEvaluationRequest } from './evaluation'
 import type { EvaluationResponse, RevisionRequest, RevisionResponse } from './evaluation'
 import type { Education, Experience, Project, ResumeData, SkillGroup } from './types'
+
+/** Seed a live session so authFetch attaches the token instead of hitting
+ * /auth/refresh first. */
+function seedSession() {
+  setSession({
+    access_token: 'test-token',
+    token_type: 'Bearer',
+    expires_at: Math.floor(Date.now() / 1000) + 900,
+  })
+}
 
 const experience: Experience = {
   id: 'exp-1', company: 'Acme', role: 'Engineer', employment: 'Full-time',
@@ -69,7 +80,11 @@ describe('toEvaluationRequest', () => {
 })
 
 describe('evaluateResume', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  beforeEach(seedSession)
+  afterEach(() => {
+    setSession(null)
+    vi.unstubAllGlobals()
+  })
 
   it('POSTs to /v1/evaluations and returns the parsed evaluation', async () => {
     const body: EvaluationResponse = {
@@ -86,8 +101,10 @@ describe('evaluateResume', () => {
 
     expect(result).toEqual(body)
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('/v1/evaluations')
+    // API_BASE may be absolute when a local .env sets VITE_API_BASE_URL.
+    expect(String(url)).toMatch(/\/v1\/evaluations$/)
     expect(init.method).toBe('POST')
+    expect(init.headers.Authorization).toBe('Bearer test-token')
     expect(JSON.parse(init.body).job_description).toBe('jd')
   })
 
@@ -119,7 +136,11 @@ describe('evaluateResume', () => {
 })
 
 describe('reviseResume', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  beforeEach(seedSession)
+  afterEach(() => {
+    setSession(null)
+    vi.unstubAllGlobals()
+  })
 
   const params: RevisionRequest = {
     job_description: 'Build great software',
@@ -160,7 +181,8 @@ describe('reviseResume', () => {
 
     expect(result).toEqual(body)
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('/v1/revisions')
+    // API_BASE may be absolute when a local .env sets VITE_API_BASE_URL.
+    expect(String(url)).toMatch(/\/v1\/revisions$/)
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual(params)
   })
